@@ -1,12 +1,24 @@
 use std::{
     env,
-    fs::{self, DirEntry, Metadata},
+    fs::{self, DirEntry, File, Metadata},
     io,
     os::unix::fs::{MetadataExt, PermissionsExt},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use chrono::{DateTime, Local};
+
+#[derive(Debug, Clone)]
+pub enum FileColor {
+    // for links with no-exist target
+    Red,
+    // for normal links
+    Aqua,
+    // for directories
+    Blue,
+    // TODO: for files by file extension
+    Other,
+}
 
 #[derive(Debug, Clone)]
 pub struct MetaData {
@@ -20,23 +32,47 @@ pub struct MetaData {
     pub modified_at: DateTime<Local>,
 }
 
+impl MetaData {
+    fn try_from(metadata: &Metadata) -> Option<Self> {
+        Some(MetaData {
+            size: metadata.len(),
+            human_size: get_human_readable_size(metadata.len()),
+            mode: metadata.mode(),
+            mode_str: get_file_mode_formated(&metadata).ok()?,
+            created_at: DateTime::from(metadata.created().ok()?),
+            modified_at: DateTime::from(metadata.modified().ok()?),
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileStyle {
+    pub suffix: char,
+    pub color: FileColor,
+}
+
+#[derive(Debug, Clone)]
+pub struct BaseInfo {
+    pub name: String,
+    pub style: Option<FileStyle>,
+
+    pub path: PathBuf,
+}
+
 #[derive(Debug, Clone)]
 pub enum FileSystemEntry {
     File {
-        name: String,
-        path: PathBuf,
+        base_info: BaseInfo,
         metadata: MetaData,
         extension: Option<String>,
     },
     Directory {
-        name: String,
-        path: PathBuf,
+        base_info: BaseInfo,
         metadata: MetaData,
         entries: Vec<FileSystemEntry>,
     },
     Link {
-        name: String,
-        path: PathBuf,
+        base_info: BaseInfo,
         metadata: MetaData,
         target: PathBuf,
     },
@@ -113,11 +149,44 @@ fn get_human_readable_size(size: u64) -> String {
 }
 
 impl FileSystemEntry {
+    pub fn new_from_values(
+        name: String,
+        path: PathBuf,
+        style: Option<FileStyle>,
+        metadata: Metadata,
+    ) -> Option<Self> {
+        let meta_data = MetaData::try_from(&metadata)?;
+
+        if metadata.is_file() {
+            Some(FileSystemEntry::File {
+                extension: path
+                    .extension()
+                    .and_then(|s| s.to_str().map(|s| s.to_string())),
+                base_info: BaseInfo { name, style, path },
+                metadata: meta_data,
+            })
+        } else if metadata.is_dir() {
+            Some(FileSystemEntry::Directory {
+                base_info: BaseInfo { name, style, path },
+                metadata: meta_data,
+                entries: vec![],
+            })
+        } else if metadata.is_symlink() {
+            let target = fs::read_link(&path).ok()?;
+            Some(FileSystemEntry::Link {
+                base_info: BaseInfo { name, style, path },
+                metadata: meta_data,
+                target,
+            })
+        } else {
+            None
+        }
+    }
     pub fn is_hidden(&self) -> bool {
         match self {
-            FileSystemEntry::File { name, .. } => name.starts_with("."),
-            FileSystemEntry::Directory { name, .. } => name.starts_with("."),
-            FileSystemEntry::Link { name, .. } => name.starts_with("."),
+            FileSystemEntry::File { base_info, .. } => base_info.name.starts_with("."),
+            FileSystemEntry::Directory { base_info, .. } => base_info.name.starts_with("."),
+            FileSystemEntry::Link { base_info, .. } => base_info.name.starts_with("."),
         }
     }
     pub fn metadata(&self) -> &MetaData {
@@ -125,6 +194,13 @@ impl FileSystemEntry {
             FileSystemEntry::File { metadata, .. } => metadata,
             FileSystemEntry::Directory { metadata, .. } => metadata,
             FileSystemEntry::Link { metadata, .. } => metadata,
+        }
+    }
+    pub fn base_info(&self) -> &BaseInfo {
+        match self {
+            FileSystemEntry::File { base_info, .. } => base_info,
+            FileSystemEntry::Directory { base_info, .. } => base_info,
+            FileSystemEntry::Link { base_info, .. } => base_info,
         }
     }
     pub fn push_to_dir(&mut self, entry: FileSystemEntry) {
@@ -141,98 +217,41 @@ impl FileSystemEntry {
         let metadata = fs::metadata(&path).ok()?;
 
         let name = path.file_name()?.to_string_lossy().to_string();
-        let meta_data = MetaData {
-            size: metadata.len(),
-            human_size: get_human_readable_size(metadata.len()),
-            mode: metadata.mode(),
-            mode_str: get_file_mode_formated(&metadata).ok()?,
-            created_at: DateTime::from(metadata.created().ok()?),
-            modified_at: DateTime::from(metadata.modified().ok()?),
-        };
 
-        if metadata.is_file() {
-            Some(FileSystemEntry::File {
-                name,
-                extension: path
-                    .extension()
-                    .and_then(|s| s.to_str().map(|s| s.to_string())),
-                path,
-                metadata: meta_data,
-            })
-        } else if metadata.is_dir() {
-            Some(FileSystemEntry::Directory {
-                name,
-                path,
-                metadata: meta_data,
-                entries: vec![],
-            })
-        } else if metadata.is_symlink() {
-            let target = fs::read_link(&path).ok()?;
-            Some(FileSystemEntry::Link {
-                name,
-                path,
-                metadata: meta_data,
-                target,
-            })
-        } else {
-            None
-        }
+        FileSystemEntry::new_from_values(name, path, None, metadata)
     }
     pub fn from_dir_entry(entry: DirEntry) -> Option<Self> {
         let path = entry.path();
         let metadata = entry.metadata().ok()?;
 
         let name = entry.file_name().to_string_lossy().to_string();
-        let meta_data = MetaData {
-            size: metadata.len(),
-            human_size: get_human_readable_size(metadata.len()),
-            mode: metadata.mode(),
-            mode_str: get_file_mode_formated(&metadata).ok()?,
-            created_at: DateTime::from(metadata.created().ok()?),
-            modified_at: DateTime::from(metadata.modified().ok()?),
-        };
-
-        if metadata.is_file() {
-            Some(FileSystemEntry::File {
-                name,
-                extension: path
-                    .extension()
-                    .and_then(|s| s.to_str().map(|s| s.to_string())),
-                path,
-                metadata: meta_data,
-            })
-        } else if metadata.is_dir() {
-            Some(FileSystemEntry::Directory {
-                name,
-                path,
-                metadata: meta_data,
-                entries: vec![],
-            })
-        } else if metadata.is_symlink() {
-            let target = fs::read_link(&path).ok()?;
-            Some(FileSystemEntry::Link {
-                name,
-                path,
-                metadata: meta_data,
-                target,
-            })
-        } else {
-            None
-        }
+        FileSystemEntry::new_from_values(name, path, None, metadata)
     }
     pub fn to_string_short(&self) -> String {
         match self {
-            FileSystemEntry::File { name, .. } => name.clone(),
-            FileSystemEntry::Directory { name, .. } => format!("{}/", name),
-            FileSystemEntry::Link { name, .. } => format!("{}@", name),
+            FileSystemEntry::File { base_info, .. } => base_info.name.clone(),
+            FileSystemEntry::Directory { base_info, .. } => format!("{}/", base_info.name),
+            FileSystemEntry::Link { base_info, .. } => format!("{}@", base_info.name),
         }
     }
 
     fn get_name_and_metadata(&self) -> (&str, &MetaData) {
         match self {
-            FileSystemEntry::File { name, metadata, .. } => (&name, &metadata),
-            FileSystemEntry::Directory { name, metadata, .. } => (&name, &metadata),
-            FileSystemEntry::Link { name, metadata, .. } => (&name, &metadata),
+            FileSystemEntry::File {
+                base_info,
+                metadata,
+                ..
+            } => (&base_info.name, &metadata),
+            FileSystemEntry::Directory {
+                base_info,
+                metadata,
+                ..
+            } => (&base_info.name, &metadata),
+            FileSystemEntry::Link {
+                base_info,
+                metadata,
+                ..
+            } => (&base_info.name, &metadata),
         }
     }
     pub fn get_info_for_long(&self, human_size: bool) -> LongFSEString {
