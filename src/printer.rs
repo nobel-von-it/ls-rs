@@ -30,7 +30,7 @@ impl Printer {
         self
     }
     pub fn sort(&mut self) -> &mut Self {
-        // if provided both time and size sort, sort by time first and then by size
+        // if provided, sort by time first and then by size and then by name
         if self.config.time_sort {
             self.fses.sort_by_key(|fse| fse.metadata().modified_at);
         }
@@ -51,14 +51,38 @@ impl Printer {
         self.fses.iter().for_each(|fse| {
             self.names.push(fse.to_string_short());
         });
+        if self.config.numeric {
+            self.add_numbers_to_names()
+        } else {
+            self
+        }
+    }
+    pub fn add_numbers_to_names(&mut self) -> &mut Self {
+        self.names = self
+            .names
+            .iter()
+            .enumerate()
+            .map(|(i, n)| format!("{}. {}", i + 1, n))
+            .collect();
         self
     }
-    pub fn print_advance_short_by_config_cols(&self) {
-        let cols = if let Some(cols) = self.config.cols {
-            cols
+    pub fn get_config_cols_value(&self) -> Option<usize> {
+        if let Some(cols) = self.config.cols {
+            Some(cols)
+        } else if self.config.one_col {
+            Some(1)
         } else {
-            return;
-        };
+            None
+        }
+    }
+    pub fn print_advance_short_by(&self) {
+        if let Some(cols) = self.get_config_cols_value() {
+            self.print_advance_short_by_config_cols(cols);
+        } else {
+            self.print_advance_short_by_terminal_width();
+        }
+    }
+    pub fn print_advance_short_by_config_cols(&self, cols: usize) {
         if self.names.is_empty() {
             return;
         }
@@ -123,11 +147,7 @@ impl Printer {
         }
     }
     pub fn print(&self) {
-        if self.config.cols.is_some() {
-            self.print_advance_short_by_config_cols();
-        } else {
-            self.print_advance_short_by_terminal_width();
-        }
+        self.print_advance_short_by();
         // self.fses.iter().for_each(|fse| {
         //     if self.config.long {
         //         fse.to_string_long()
