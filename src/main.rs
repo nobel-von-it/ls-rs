@@ -1,6 +1,6 @@
 use std::{fs, io};
 
-use ls::{command, files::FileSystemEntry, printer::Printer};
+use ls_rs::{command, files::FileSystemEntry, printer::Printer};
 
 fn main() -> io::Result<()> {
     let matches = command::ls_command().get_matches();

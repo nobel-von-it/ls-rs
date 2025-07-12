@@ -1,9 +1,9 @@
 use std::{
     env,
-    fs::{self, DirEntry, File, Metadata},
+    fs::{self, DirEntry, Metadata},
     io,
     os::unix::fs::{MetadataExt, PermissionsExt},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 use chrono::{DateTime, Local};
