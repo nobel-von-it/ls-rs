@@ -1,6 +1,9 @@
 use terminal_size::{Height, Width, terminal_size};
 
-use crate::{command::Config, files::FileSystemEntry};
+use crate::{
+    command::Config,
+    files::{FileSystemEntry, LongFSEString},
+};
 
 pub struct Printer {
     config: Config,
@@ -47,15 +50,56 @@ impl Printer {
 
         self
     }
-    pub fn prepare(&mut self) -> &mut Self {
+    pub fn prepare_short(&mut self) -> &mut Self {
         self.fses.iter().for_each(|fse| {
             self.names.push(fse.to_string_short());
         });
-        if self.config.numeric {
-            self.add_numbers_to_names()
+
+        self
+    }
+    pub fn prepare_long(&mut self) -> &mut Self {
+        let max_time = self
+            .fses
+            .iter()
+            .map(|fse| {
+                fse.metadata()
+                    .modified_at
+                    .format("%b %e %R")
+                    .to_string()
+                    .len()
+            })
+            .max()
+            .unwrap_or(0);
+        let max_size = self
+            .fses
+            .iter()
+            .map(|fse| {
+                if self.config.humanable {
+                    fse.metadata().human_size.len()
+                } else {
+                    fse.metadata().size.to_string().len()
+                }
+            })
+            .max()
+            .unwrap_or(0);
+
+        self.fses.iter().for_each(|fse| {
+            self.names
+                .push(fse.to_string_long(self.config.humanable, max_size, max_time))
+        });
+
+        self
+    }
+    pub fn prepare(&mut self) -> &mut Self {
+        if self.config.long {
+            self.prepare_long();
         } else {
-            self
+            self.prepare_short();
         }
+        if self.config.numeric {
+            self.add_numbers_to_names();
+        }
+        self
     }
     pub fn add_numbers_to_names(&mut self) -> &mut Self {
         self.names = self
@@ -146,8 +190,15 @@ impl Printer {
             println!("{}", line.trim_end());
         }
     }
+    pub fn print_long(&self) {
+        self.names.iter().for_each(|n| println!("{}", n));
+    }
     pub fn print(&self) {
-        self.print_advance_short_by();
+        if self.config.long {
+            self.print_long();
+        } else {
+            self.print_advance_short_by();
+        }
         // self.fses.iter().for_each(|fse| {
         //     if self.config.long {
         //         fse.to_string_long()

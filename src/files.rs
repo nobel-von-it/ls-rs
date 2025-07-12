@@ -223,22 +223,54 @@ impl FileSystemEntry {
     pub fn to_string_short(&self) -> String {
         match self {
             FileSystemEntry::File { name, .. } => name.clone(),
-            FileSystemEntry::Directory { name, .. } => name.clone(),
-            FileSystemEntry::Link { name, .. } => name.clone(),
+            FileSystemEntry::Directory { name, .. } => format!("{}/", name),
+            FileSystemEntry::Link { name, .. } => format!("{}@", name),
         }
     }
 
-    pub fn to_string_long(&self) -> String {
+    fn get_name_and_metadata(&self) -> (&str, &MetaData) {
         match self {
-            FileSystemEntry::File { name, metadata, .. } => {
-                format!("{} {}", name, metadata.human_size)
-            }
-            FileSystemEntry::Directory { name, metadata, .. } => {
-                format!("{} {}", name, metadata.human_size)
-            }
-            FileSystemEntry::Link { name, metadata, .. } => {
-                format!("{} {}", name, metadata.human_size)
-            }
+            FileSystemEntry::File { name, metadata, .. } => (&name, &metadata),
+            FileSystemEntry::Directory { name, metadata, .. } => (&name, &metadata),
+            FileSystemEntry::Link { name, metadata, .. } => (&name, &metadata),
         }
     }
+    pub fn get_info_for_long(&self, human_size: bool) -> LongFSEString {
+        let (name, metadata) = self.get_name_and_metadata();
+        let size = if human_size {
+            metadata.human_size.to_string()
+        } else {
+            format!("{}", metadata.size)
+        };
+        LongFSEString {
+            mode: metadata.mode_str.to_string(),
+            size,
+            modified_at: metadata.modified_at,
+            name: name.to_string(),
+        }
+    }
+    pub fn to_string_long(&self, human_size: bool, max_size: usize, max_time: usize) -> String {
+        let (name, md) = self.get_name_and_metadata();
+        let date_str = md.modified_at.format("%b %e %R");
+        format!(
+            "{} {:<size_width$} {:>time_width$} {}",
+            md.mode_str,
+            if human_size {
+                md.human_size.to_string()
+            } else {
+                md.size.to_string()
+            },
+            date_str,
+            name,
+            size_width = max_size,
+            time_width = max_time,
+        )
+    }
+}
+
+pub struct LongFSEString {
+    pub mode: String,
+    pub size: String,
+    pub modified_at: DateTime<Local>,
+    pub name: String,
 }
