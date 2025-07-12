@@ -50,6 +50,7 @@ pub fn ls_command() -> Command {
         // .arg(arg_bool_t("ext", false, "Sort by extension", 'X', false))
         .arg(arg_bool_t("recursive", false, "Recursive", 'R', false))
         .arg(arg_bool("one", false, "One line input", false))
+        .arg(arg_bool("inode", false, "Add inode info to output", false))
 }
 
 #[derive(Debug)]
@@ -67,6 +68,7 @@ pub struct Config {
     // pub ext_sort: bool,
     pub recursive: bool,
     pub one_col: bool,
+    pub inode: bool,
 }
 
 impl Config {
@@ -90,6 +92,7 @@ impl Config {
             // ext_sort: *matches.get_one("ext").unwrap(),
             recursive: *matches.get_one("recursive").unwrap(),
             one_col: *matches.get_one("one").unwrap(),
+            inode: *matches.get_one("inode").unwrap(),
         }
     }
 }

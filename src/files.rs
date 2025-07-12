@@ -25,6 +25,8 @@ pub struct MetaData {
     pub size: u64,
     pub human_size: String,
 
+    pub inode: u64,
+
     pub mode: u32,
     pub mode_str: String,
 
@@ -37,6 +39,7 @@ impl MetaData {
         Some(MetaData {
             size: metadata.len(),
             human_size: get_human_readable_size(metadata.len()),
+            inode: metadata.ino(),
             mode: metadata.mode(),
             mode_str: get_file_mode_formated(&metadata).ok()?,
             created_at: DateTime::from(metadata.created().ok()?),
@@ -268,11 +271,22 @@ impl FileSystemEntry {
             name: name.to_string(),
         }
     }
-    pub fn to_string_long(&self, human_size: bool, max_size: usize, max_time: usize) -> String {
+    pub fn to_string_long(
+        &self,
+        human_size: bool,
+        inode: bool,
+        max_size: usize,
+        max_time: usize,
+    ) -> String {
         let (name, md) = self.get_name_and_metadata();
         let date_str = md.modified_at.format("%b %e %R");
         format!(
-            "{} {:<size_width$} {:>time_width$} {}",
+            "{}{} {:<size_width$} {:>time_width$} {}",
+            if inode {
+                format!("{} ", md.inode)
+            } else {
+                String::new()
+            },
             md.mode_str,
             if human_size {
                 md.human_size.to_string()

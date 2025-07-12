@@ -84,8 +84,12 @@ impl Printer {
             .unwrap_or(0);
 
         self.fses.iter().for_each(|fse| {
-            self.names
-                .push(fse.to_string_long(self.config.humanable, max_size, max_time))
+            self.names.push(fse.to_string_long(
+                self.config.humanable,
+                self.config.inode,
+                max_size,
+                max_time,
+            ))
         });
 
         self
