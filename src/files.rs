@@ -20,6 +20,20 @@ pub enum FileColor {
     Other,
 }
 
+impl FileColor {
+    pub fn get_code(&self) -> &str {
+        match self {
+            FileColor::Red => "\x1b[31m",
+            FileColor::Aqua => "\x1b[36m",
+            FileColor::Blue => "\x1b[34m",
+            FileColor::Other => "\x1b[33m",
+        }
+    }
+    pub fn reset(&self) -> &str {
+        "\x1b[0m"
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct MetaData {
     pub size: u64,
@@ -152,12 +166,7 @@ fn get_human_readable_size(size: u64) -> String {
 }
 
 impl FileSystemEntry {
-    pub fn new_from_values(
-        name: String,
-        path: PathBuf,
-        style: Option<FileStyle>,
-        metadata: Metadata,
-    ) -> Option<Self> {
+    pub fn new_from_values(name: String, path: PathBuf, metadata: Metadata) -> Option<Self> {
         let meta_data = MetaData::try_from(&metadata)?;
 
         if metadata.is_file() {
@@ -165,24 +174,64 @@ impl FileSystemEntry {
                 extension: path
                     .extension()
                     .and_then(|s| s.to_str().map(|s| s.to_string())),
-                base_info: BaseInfo { name, style, path },
+                base_info: BaseInfo {
+                    name,
+                    style: None,
+                    path,
+                },
                 metadata: meta_data,
             })
         } else if metadata.is_dir() {
             Some(FileSystemEntry::Directory {
-                base_info: BaseInfo { name, style, path },
+                base_info: BaseInfo {
+                    name,
+                    style: Some(FileStyle {
+                        suffix: '/',
+                        color: FileColor::Blue,
+                    }),
+                    path,
+                },
                 metadata: meta_data,
                 entries: vec![],
             })
         } else if metadata.is_symlink() {
             let target = fs::read_link(&path).ok()?;
             Some(FileSystemEntry::Link {
-                base_info: BaseInfo { name, style, path },
+                base_info: BaseInfo {
+                    name,
+                    style: Some(FileStyle {
+                        suffix: '@',
+                        color: FileColor::Aqua,
+                    }),
+                    path,
+                },
                 metadata: meta_data,
                 target,
             })
         } else {
             None
+        }
+    }
+    pub fn get_styled_name_by_info(&self, info: &BaseInfo) -> String {
+        if let Some(style) = &info.style {
+            format!(
+                "{}{}{}{}",
+                style.color.get_code(),
+                info.name,
+                style.color.reset(),
+                style.suffix
+            )
+        } else {
+            format!("{}", info.name)
+        }
+    }
+    pub fn get_styled_name(&self) -> String {
+        match self {
+            FileSystemEntry::File { base_info, .. } => self.get_styled_name_by_info(&base_info),
+            FileSystemEntry::Directory { base_info, .. } => {
+                self.get_styled_name_by_info(&base_info)
+            }
+            FileSystemEntry::Link { base_info, .. } => self.get_styled_name_by_info(&base_info),
         }
     }
     pub fn is_hidden(&self) -> bool {
@@ -221,21 +270,17 @@ impl FileSystemEntry {
 
         let name = path.file_name()?.to_string_lossy().to_string();
 
-        FileSystemEntry::new_from_values(name, path, None, metadata)
+        FileSystemEntry::new_from_values(name, path, metadata)
     }
     pub fn from_dir_entry(entry: DirEntry) -> Option<Self> {
         let path = entry.path();
         let metadata = entry.metadata().ok()?;
 
         let name = entry.file_name().to_string_lossy().to_string();
-        FileSystemEntry::new_from_values(name, path, None, metadata)
+        FileSystemEntry::new_from_values(name, path, metadata)
     }
     pub fn to_string_short(&self) -> String {
-        match self {
-            FileSystemEntry::File { base_info, .. } => base_info.name.clone(),
-            FileSystemEntry::Directory { base_info, .. } => format!("{}/", base_info.name),
-            FileSystemEntry::Link { base_info, .. } => format!("{}@", base_info.name),
-        }
+        self.get_styled_name()
     }
 
     fn get_name_and_metadata(&self) -> (&str, &MetaData) {
@@ -255,6 +300,25 @@ impl FileSystemEntry {
                 metadata,
                 ..
             } => (&base_info.name, &metadata),
+        }
+    }
+    fn get_info_and_metadata(&self) -> (&BaseInfo, &MetaData) {
+        match self {
+            FileSystemEntry::File {
+                base_info,
+                metadata,
+                ..
+            } => (base_info, metadata),
+            FileSystemEntry::Directory {
+                base_info,
+                metadata,
+                ..
+            } => (base_info, metadata),
+            FileSystemEntry::Link {
+                base_info,
+                metadata,
+                ..
+            } => (base_info, metadata),
         }
     }
     pub fn get_info_for_long(&self, human_size: bool) -> LongFSEString {
@@ -278,7 +342,8 @@ impl FileSystemEntry {
         max_size: usize,
         max_time: usize,
     ) -> String {
-        let (name, md) = self.get_name_and_metadata();
+        let styled_name = self.get_styled_name();
+        let md = self.metadata();
         let date_str = md.modified_at.format("%b %e %R");
         format!(
             "{}{} {:<size_width$} {:>time_width$} {}",
@@ -294,7 +359,7 @@ impl FileSystemEntry {
                 md.size.to_string()
             },
             date_str,
-            name,
+            styled_name,
             size_width = max_size,
             time_width = max_time,
         )
