@@ -283,7 +283,7 @@ impl FileSystemEntry {
         self.get_styled_name()
     }
 
-    fn get_name_and_metadata(&self) -> (&str, &MetaData) {
+    fn _get_name_and_metadata(&self) -> (&str, &MetaData) {
         match self {
             FileSystemEntry::File {
                 base_info,
@@ -302,7 +302,7 @@ impl FileSystemEntry {
             } => (&base_info.name, &metadata),
         }
     }
-    fn get_info_and_metadata(&self) -> (&BaseInfo, &MetaData) {
+    fn _get_info_and_metadata(&self) -> (&BaseInfo, &MetaData) {
         match self {
             FileSystemEntry::File {
                 base_info,
@@ -319,20 +319,6 @@ impl FileSystemEntry {
                 metadata,
                 ..
             } => (base_info, metadata),
-        }
-    }
-    pub fn get_info_for_long(&self, human_size: bool) -> LongFSEString {
-        let (name, metadata) = self.get_name_and_metadata();
-        let size = if human_size {
-            metadata.human_size.to_string()
-        } else {
-            format!("{}", metadata.size)
-        };
-        LongFSEString {
-            mode: metadata.mode_str.to_string(),
-            size,
-            modified_at: metadata.modified_at,
-            name: name.to_string(),
         }
     }
     pub fn to_string_long(
@@ -364,11 +350,4 @@ impl FileSystemEntry {
             time_width = max_time,
         )
     }
-}
-
-pub struct LongFSEString {
-    pub mode: String,
-    pub size: String,
-    pub modified_at: DateTime<Local>,
-    pub name: String,
 }

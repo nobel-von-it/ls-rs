@@ -1,10 +1,4 @@
-use terminal_size::{Height, Width, terminal_size};
-
-use crate::{
-    command::Config,
-    files::{FileSystemEntry, LongFSEString},
-    json::Serializer,
-};
+use crate::{command::Config, files::FileSystemEntry, json::Serializer, term};
 
 pub struct Printer {
     config: Config,
@@ -183,7 +177,7 @@ impl Printer {
             return;
         }
 
-        let (Width(term_cols), _) = terminal_size().unwrap_or((Width(80), Height(24)));
+        let (term_cols, _) = term::terminal_size().unwrap_or((80, 24));
         let term_cols = term_cols as usize;
 
         let total_width = self.names.iter().map(|n| n.len()).sum::<usize>() + self.names.len() - 1;

@@ -1,5 +1,4 @@
-use crate::files::{BaseInfo, FileSystemEntry, MetaData};
-use std::io::Write;
+use crate::files::FileSystemEntry;
 
 pub trait Serializer {
     fn short_json(&self) -> String;
