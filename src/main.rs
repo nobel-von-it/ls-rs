@@ -22,6 +22,8 @@ fn main() -> io::Result<()> {
     }
 
     let mut printer = Printer::new(config, start_dir);
-    printer.filter().sort().prepare().print();
+    if let Some(printer) = printer.json_checker() {
+        printer.filter().sort().prepare().print();
+    }
     Ok(())
 }

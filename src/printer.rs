@@ -3,24 +3,41 @@ use terminal_size::{Height, Width, terminal_size};
 use crate::{
     command::Config,
     files::{FileSystemEntry, LongFSEString},
+    json::Serializer,
 };
 
 pub struct Printer {
     config: Config,
+    start_dir: FileSystemEntry,
     fses: Vec<FileSystemEntry>,
     names: Vec<String>,
 }
 
 impl Printer {
-    pub fn new(config: Config, fses: FileSystemEntry) -> Self {
-        let fses = match fses {
+    pub fn new(config: Config, start_dir: FileSystemEntry) -> Self {
+        let fses = match start_dir.clone() {
             FileSystemEntry::Directory { entries, .. } => entries,
             _ => vec![],
         };
         Self {
             config,
+            start_dir,
             fses,
             names: vec![],
+        }
+    }
+    pub fn json_checker(&mut self) -> Option<&mut Self> {
+        if self.config.json_mini || self.config.json_big {
+            self.json_finalizer();
+            return None;
+        }
+        Some(self)
+    }
+    fn json_finalizer(&self) {
+        if self.config.json_mini {
+            println!("{}", self.start_dir.short_json())
+        } else if self.config.json_big {
+            println!("{}", self.start_dir.long_json())
         }
     }
     pub fn filter(&mut self) -> &mut Self {
