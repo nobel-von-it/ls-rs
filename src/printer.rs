@@ -3,20 +3,28 @@ use crate::{command::Config, files::FileSystemEntry, json::Serializer, term};
 pub struct Printer {
     config: Config,
     start_dir: FileSystemEntry,
-    fses: Vec<FileSystemEntry>,
     names: Vec<String>,
 }
 
 impl Printer {
-    pub fn new(config: Config, start_dir: FileSystemEntry) -> Self {
-        let fses = match start_dir.clone() {
+    fn get_mut_entries(&mut self) -> &mut Vec<FileSystemEntry> {
+        match &mut self.start_dir {
             FileSystemEntry::Directory { entries, .. } => entries,
-            _ => vec![],
-        };
+            // Start dir always is Directory
+            _ => unreachable!(),
+        }
+    }
+    fn get_entries(&self) -> &Vec<FileSystemEntry> {
+        match &self.start_dir {
+            FileSystemEntry::Directory { entries, .. } => entries,
+            // Start dir always is Directory
+            _ => unreachable!(),
+        }
+    }
+    pub fn new(config: Config, start_dir: FileSystemEntry) -> Self {
         Self {
             config,
             start_dir,
-            fses,
             names: vec![],
         }
     }
@@ -35,42 +43,44 @@ impl Printer {
         }
     }
     pub fn filter(&mut self) -> &mut Self {
-        self.fses = self
-            .fses
-            .iter()
-            .filter(|fse| self.config.all || !fse.is_hidden())
-            .cloned()
-            .collect();
+        let all = self.config.all;
+        self.get_mut_entries().retain(|fse| all || !fse.is_hidden());
         self
     }
     pub fn sort(&mut self) -> &mut Self {
         // if provided, sort by time first and then by size and then by name
         if self.config.time_sort {
-            self.fses.sort_by_key(|fse| fse.metadata().modified_at);
+            self.get_mut_entries()
+                .sort_by_key(|fse| fse.metadata().modified_at);
         }
         if self.config.size_sort {
-            self.fses.sort_by_key(|fse| fse.metadata().size);
+            self.get_mut_entries()
+                .sort_by_key(|fse| fse.metadata().size);
         }
         if self.config.name_sort {
-            self.fses.sort_by_key(|fse| fse.to_string_short());
+            self.get_mut_entries()
+                .sort_by_key(|fse| fse.to_string_short());
         }
 
         if self.config.reverse {
-            self.fses.reverse();
+            self.get_mut_entries().reverse();
         }
 
         self
     }
     pub fn prepare_short(&mut self) -> &mut Self {
-        self.fses.iter().for_each(|fse| {
-            self.names.push(fse.to_string_short());
-        });
+        let temp = self
+            .get_entries()
+            .iter()
+            .map(|fse| fse.to_string_short())
+            .collect::<Vec<String>>();
+        self.names.extend(temp);
 
         self
     }
     pub fn prepare_long(&mut self) -> &mut Self {
         let max_time = self
-            .fses
+            .get_entries()
             .iter()
             .map(|fse| {
                 fse.metadata()
@@ -82,7 +92,7 @@ impl Printer {
             .max()
             .unwrap_or(0);
         let max_size = self
-            .fses
+            .get_entries()
             .iter()
             .map(|fse| {
                 if self.config.humanable {
@@ -94,14 +104,15 @@ impl Printer {
             .max()
             .unwrap_or(0);
 
-        self.fses.iter().for_each(|fse| {
-            self.names.push(fse.to_string_long(
-                self.config.humanable,
-                self.config.inode,
-                max_size,
-                max_time,
-            ))
-        });
+        let temp = self
+            .get_entries()
+            .iter()
+            .map(|fse| {
+                fse.to_string_long(self.config.humanable, self.config.inode, max_size, max_time)
+            })
+            .collect::<Vec<String>>();
+
+        self.names.extend(temp);
 
         self
     }
