@@ -16,7 +16,9 @@ pub enum FileColor {
     Aqua,
     // for directories
     Blue,
-    // TODO: for files by file extension
+    // for executable
+    Green,
+    // TODO: for files by file extension (white by default)
     Other,
 }
 
@@ -24,9 +26,10 @@ impl FileColor {
     pub fn get_code(&self) -> &str {
         match self {
             FileColor::Red => "\x1b[31m",
-            FileColor::Aqua => "\x1b[36m",
+            FileColor::Green => "\x1b[32m",
             FileColor::Blue => "\x1b[34m",
-            FileColor::Other => "\x1b[33m",
+            FileColor::Aqua => "\x1b[36m",
+            FileColor::Other => "\x1b[37m",
         }
     }
     pub fn reset(&self) -> &str {
@@ -49,7 +52,7 @@ pub struct MetaData {
 }
 
 impl MetaData {
-    fn try_from(metadata: &Metadata) -> Option<Self> {
+    pub fn try_from(metadata: &Metadata) -> Option<Self> {
         Some(MetaData {
             size: metadata.len(),
             human_size: get_human_readable_size(metadata.len()),
