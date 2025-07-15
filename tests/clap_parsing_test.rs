@@ -33,8 +33,71 @@ fn flag_la_test() {
 }
 
 #[test]
-fn flag_full_test() {
+fn flag_full_in_one_test() {
     let args = ["ls-rs", "-alnHrNTSRoijJ"];
+    let matches = command::ls_command().get_matches_from(&args);
+    let config = command::Config::clap_parse(&matches);
+
+    assert!(config.all);
+    assert!(config.long);
+    assert!(config.numeric);
+    assert!(config.humanable);
+    assert!(config.reverse);
+    assert!(config.name_sort);
+    assert!(config.time_sort);
+    assert!(config.size_sort);
+    assert!(config.recursive);
+    assert!(config.one_col);
+    assert!(config.inode);
+    assert!(config.json_mini);
+    assert!(config.json_big);
+
+    assert_eq!(config.cols, None);
+}
+
+#[test]
+fn flag_full_full_test() {
+    let args = [
+        "ls-rs",
+        "--all",
+        "--long",
+        "--numeric",
+        "--humanable",
+        "--reverse",
+        "--sort",
+        "--time",
+        "--size",
+        "--recursive",
+        "--one",
+        "--inode",
+        "--json",
+        "--JSON",
+    ];
+    let matches = command::ls_command().get_matches_from(&args);
+    let config = command::Config::clap_parse(&matches);
+
+    assert!(config.all);
+    assert!(config.long);
+    assert!(config.numeric);
+    assert!(config.humanable);
+    assert!(config.reverse);
+    assert!(config.name_sort);
+    assert!(config.time_sort);
+    assert!(config.size_sort);
+    assert!(config.recursive);
+    assert!(config.one_col);
+    assert!(config.inode);
+    assert!(config.json_mini);
+    assert!(config.json_big);
+
+    assert_eq!(config.cols, None);
+}
+
+#[test]
+fn flag_full_short_test() {
+    let args = [
+        "ls-rs", "-a", "-l", "-n", "-H", "-r", "-N", "-T", "-S", "-R", "-o", "-i", "-j", "-J",
+    ];
     let matches = command::ls_command().get_matches_from(&args);
     let config = command::Config::clap_parse(&matches);
 
