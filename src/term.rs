@@ -1,24 +1,24 @@
 #[cfg(target_family = "unix")]
 pub fn terminal_size() -> Option<(u16, u16)> {
+    use libc::{TIOCGWINSZ, ioctl};
+    use std::io;
+    use std::mem::MaybeUninit;
+    use std::os::fd::AsRawFd;
+
+    #[repr(C)]
+    struct Winsize {
+        ws_row: u16,
+        ws_col: u16,
+        ws_xpixel: u16,
+        ws_ypixel: u16,
+    }
+
+    let stdout = io::stdout();
+    let fd_stdout = stdout.as_raw_fd();
+
+    let mut size: MaybeUninit<Winsize> = MaybeUninit::uninit();
+
     unsafe {
-        use libc::{TIOCGWINSZ, ioctl};
-        use std::io;
-        use std::mem::MaybeUninit;
-        use std::os::fd::AsRawFd;
-
-        #[repr(C)]
-        struct Winsize {
-            ws_row: u16,
-            ws_col: u16,
-            ws_xpixel: u16,
-            ws_ypixel: u16,
-        }
-
-        let stdout = io::stdout();
-        let fd_stdout = stdout.as_raw_fd();
-
-        let mut size: MaybeUninit<Winsize> = MaybeUninit::uninit();
-
         if ioctl(fd_stdout, TIOCGWINSZ, size.as_mut_ptr()) != -1 {
             let size = size.assume_init();
             Some((size.ws_col, size.ws_row))
