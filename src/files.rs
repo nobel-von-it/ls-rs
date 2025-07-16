@@ -291,8 +291,44 @@ impl FileSystemEntry {
         let name = entry.file_name().to_string_lossy().to_string();
         FileSystemEntry::new_from_values(name, path, metadata)
     }
+    pub fn name(&self) -> &str {
+        match self {
+            FileSystemEntry::File { base_info, .. } => &base_info.name,
+            FileSystemEntry::Directory { base_info, .. } => &base_info.name,
+            FileSystemEntry::Link { base_info, .. } => &base_info.name,
+        }
+    }
     pub fn to_string_short(&self) -> String {
         self.get_styled_name()
+    }
+    pub fn to_string_long(
+        &self,
+        human_size: bool,
+        inode: bool,
+        max_size: usize,
+        max_time: usize,
+    ) -> String {
+        let styled_name = self.get_styled_name();
+        let md = self.metadata();
+        let date_str = md.modified_at.format("%b %e %R");
+        format!(
+            "{}{} {:<size_width$} {:>time_width$} {}",
+            if inode {
+                format!("{} ", md.inode)
+            } else {
+                String::new()
+            },
+            md.mode_str,
+            if human_size {
+                md.human_size.to_string()
+            } else {
+                md.size.to_string()
+            },
+            date_str,
+            styled_name,
+            size_width = max_size,
+            time_width = max_time,
+        )
     }
 
     fn _get_name_and_metadata(&self) -> (&str, &MetaData) {
@@ -332,34 +368,5 @@ impl FileSystemEntry {
                 ..
             } => (base_info, metadata),
         }
-    }
-    pub fn to_string_long(
-        &self,
-        human_size: bool,
-        inode: bool,
-        max_size: usize,
-        max_time: usize,
-    ) -> String {
-        let styled_name = self.get_styled_name();
-        let md = self.metadata();
-        let date_str = md.modified_at.format("%b %e %R");
-        format!(
-            "{}{} {:<size_width$} {:>time_width$} {}",
-            if inode {
-                format!("{} ", md.inode)
-            } else {
-                String::new()
-            },
-            md.mode_str,
-            if human_size {
-                md.human_size.to_string()
-            } else {
-                md.size.to_string()
-            },
-            date_str,
-            styled_name,
-            size_width = max_size,
-            time_width = max_time,
-        )
     }
 }

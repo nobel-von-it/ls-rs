@@ -145,13 +145,6 @@ impl Printer {
             None
         }
     }
-    pub fn print_advance_short_by(&self) {
-        if let Some(cols) = self.get_config_cols_value() {
-            self.print_advance_short_by_config_cols(cols);
-        } else {
-            self.print_advance_short_by_terminal_width();
-        }
-    }
     pub fn print_advance_short_by_config_cols(&self, cols: usize) {
         if self.names.is_empty() {
             return;
@@ -191,13 +184,36 @@ impl Printer {
         let (term_cols, _) = term::terminal_size().unwrap_or((80, 24));
         let term_cols = term_cols as usize;
 
-        let total_width = self.names.iter().map(|n| n.len()).sum::<usize>() + self.names.len() - 1;
+        let total_width = self
+            .names
+            .iter()
+            .map(|n| {
+                if n.starts_with("\x1b") {
+                    n.len() - 9
+                } else {
+                    n.len()
+                }
+            })
+            .sum::<usize>()
+            + self.names.len()
+            - 1;
         if total_width <= term_cols {
             println!("{}", self.names.join(" "));
             return;
         }
 
-        let max_width = self.names.iter().map(|n| n.len()).max().unwrap_or(0);
+        let max_width = self
+            .names
+            .iter()
+            .map(|n| {
+                if n.starts_with("\x1b") {
+                    n.len() - 9
+                } else {
+                    n.len()
+                }
+            })
+            .max()
+            .unwrap_or(0);
         let col_width = max_width + 2;
 
         let max_cols = (term_cols / col_width).max(1);
@@ -209,11 +225,19 @@ impl Printer {
             for col in 0..max_cols {
                 let idx = col * rows + row;
                 if let Some(name) = self.names.get(idx) {
-                    line.push_str(&format!("{name:<col_width$}"));
+                    let tmp_col_width = col_width - if name.starts_with("\x1b") { 0 } else { 9 };
+                    line.push_str(&format!("{name:<tmp_col_width$}"));
                 }
             }
 
             println!("{}", line.trim_end());
+        }
+    }
+    pub fn print_advance_short_by(&self) {
+        if let Some(cols) = self.get_config_cols_value() {
+            self.print_advance_short_by_config_cols(cols);
+        } else {
+            self.print_advance_short_by_terminal_width();
         }
     }
     pub fn print_long(&self) {
