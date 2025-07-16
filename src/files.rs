@@ -46,6 +46,7 @@ pub struct MetaData {
 
     pub mode: u32,
     pub mode_str: String,
+    pub executable: bool,
 
     pub created_at: DateTime<Local>,
     pub modified_at: DateTime<Local>,
@@ -59,6 +60,7 @@ impl MetaData {
             inode: metadata.ino(),
             mode: metadata.mode(),
             mode_str: get_file_mode_formated(&metadata).ok()?,
+            executable: metadata.is_file() && metadata.permissions().mode() & 0o111 != 0,
             created_at: DateTime::from(metadata.created().ok()?),
             modified_at: DateTime::from(metadata.modified().ok()?),
         })
@@ -179,7 +181,14 @@ impl FileSystemEntry {
                     .and_then(|s| s.to_str().map(|s| s.to_string())),
                 base_info: BaseInfo {
                     name,
-                    style: None,
+                    style: if meta_data.executable {
+                        Some(FileStyle {
+                            suffix: ' ',
+                            color: FileColor::Green,
+                        })
+                    } else {
+                        None
+                    },
                     path,
                 },
                 metadata: meta_data,
