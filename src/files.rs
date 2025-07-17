@@ -1,7 +1,8 @@
+#[cfg(unix)]
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::{
     env,
     fs::{self, DirEntry, Metadata},
-    os::unix::fs::{MetadataExt, PermissionsExt},
     path::PathBuf,
 };
 
@@ -36,6 +37,7 @@ impl FileColor {
     }
 }
 
+#[cfg(unix)]
 #[derive(Debug, Clone)]
 pub struct MetaData {
     pub size: u64,
@@ -51,9 +53,26 @@ pub struct MetaData {
     pub modified_at: DateTime<Local>,
 }
 
+#[cfg(windows)]
+#[derive(Debug, Clone, Default)]
+pub struct MetaData {
+    pub size: u64,
+    pub human_size: String,
+
+    // windows mode
+    pub archive: bool,
+    pub readonly: bool,
+    pub system: bool,
+    pub hidden: bool,
+
+    pub created_at: DateTime<Local>,
+    pub modified_at: DateTime<Local>,
+}
+
 impl MetaData {
+    #[cfg(unix)]
     pub fn try_from(metadata: &Metadata) -> Option<Self> {
-        Some(MetaData {
+        metadata.Some(MetaData {
             size: metadata.len(),
             human_size: get_human_readable_size(metadata.len()),
             inode: metadata.ino(),
@@ -63,6 +82,35 @@ impl MetaData {
             created_at: DateTime::from(metadata.created().ok()?),
             modified_at: DateTime::from(metadata.modified().ok()?),
         })
+    }
+    #[cfg(windows)]
+    pub fn try_from(metadata: &Metadata) -> Option<Self> {
+        use std::os::windows::fs::MetadataExt;
+        use winapi::um::winnt;
+
+        let mut meta_data = MetaData {
+            size: metadata.len(),
+            human_size: get_human_readable_size(metadata.len()),
+            created_at: DateTime::from(metadata.created().ok()?),
+            modified_at: DateTime::from(metadata.modified().ok()?),
+            ..Default::default()
+        };
+
+        let attrs = metadata.file_attributes();
+        if (attrs & winnt::FILE_ATTRIBUTE_ARCHIVE) != 0 {
+            meta_data.archive = true;
+        }
+        if (attrs & winnt::FILE_ATTRIBUTE_READONLY) != 0 {
+            meta_data.readonly = true;
+        }
+        if (attrs & winnt::FILE_ATTRIBUTE_HIDDEN) != 0 {
+            meta_data.hidden = true;
+        }
+        if (attrs & winnt::FILE_ATTRIBUTE_SYSTEM) != 0 {
+            meta_data.system = true;
+        }
+
+        Some(meta_data)
     }
 }
 
@@ -136,6 +184,7 @@ pub enum FileSystemEntry {
     },
 }
 
+#[cfg(unix)]
 fn get_file_mode_formated(md: &Metadata) -> String {
     let perm = md.permissions();
     let mode = perm.mode();
@@ -177,6 +226,37 @@ fn get_file_mode_formated(md: &Metadata) -> String {
     });
 
     builder
+}
+
+#[cfg(windows)]
+fn get_based_file_attributes(md: &Metadata) -> (bool, bool, bool, bool, bool, bool) {
+    use std::os::windows::fs::MetadataExt;
+    use winapi::um::winnt;
+
+    let attrs = md.file_attributes();
+
+    (
+        (attrs & winnt::FILE_ATTRIBUTE_DIRECTORY) != 0,
+        (attrs & winnt::FILE_ATTRIBUTE_ARCHIVE) != 0,
+        (attrs & winnt::FILE_ATTRIBUTE_READONLY) != 0,
+        (attrs & winnt::FILE_ATTRIBUTE_HIDDEN) != 0,
+        (attrs & winnt::FILE_ATTRIBUTE_SYSTEM) != 0,
+        (attrs & winnt::FILE_ATTRIBUTE_REPARSE_POINT) != 0,
+    )
+}
+#[cfg(windows)]
+fn get_file_mode_formated(md: &Metadata) -> String {
+    let (d, a, r, h, s, l) = get_based_file_attributes(md);
+    let mut mode = String::with_capacity(6);
+
+    for flag in [d, a, r, h, s, l] {
+        mode.push(if flag {
+            "darhsl".chars().nth(mode.len()).unwrap()
+        } else {
+            '-'
+        });
+    }
+    mode
 }
 
 fn get_human_readable_size(size: u64) -> String {

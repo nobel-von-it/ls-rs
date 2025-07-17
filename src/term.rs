@@ -31,16 +31,12 @@ pub fn terminal_size() -> Option<(u16, u16)> {
 #[cfg(target_family = "windows")]
 pub fn terminal_size() -> Option<(u16, u16)> {
     unsafe {
-        use std::ptr;
-        use winapi::shared::ntdef::MAXUSHORT;
-        use winapi::um::consoleapi::GetConsoleScreenBufferInfo;
-        use winapi::um::wincon::{CONSOLE_SCREEN_BUFFER_INFO, COORD};
+        use winapi::um::processenv::GetStdHandle;
+        use winapi::um::wincon::{CONSOLE_SCREEN_BUFFER_INFO, GetConsoleScreenBufferInfo};
 
         let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = std::mem::zeroed();
 
-        if GetConsoleScreenBufferInfo(winapi::um::processenv::GetStdHandle(-11i32 as _), &mut csbi)
-            != 0
-        {
+        if GetConsoleScreenBufferInfo(GetStdHandle(-11i32 as _), &mut csbi) != 0 {
             let width = csbi.srWindow.Right - csbi.srWindow.Left + 1;
             let height = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
             Some((width as u16, height as u16))
