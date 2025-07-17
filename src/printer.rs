@@ -108,7 +108,15 @@ impl Printer {
             .get_entries()
             .iter()
             .map(|fse| {
-                fse.to_string_long(self.config.humanable, self.config.inode, max_size, max_time)
+                #[cfg(unix)]
+                return fse.to_string_long(
+                    self.config.humanable,
+                    self.config.inode,
+                    max_size,
+                    max_time,
+                );
+                #[cfg(windows)]
+                return fse.to_string_long(self.config.humanable, max_size, max_time);
             })
             .collect::<Vec<String>>();
 

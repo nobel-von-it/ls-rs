@@ -57,28 +57,43 @@ fn medatada_file_mode_test() -> io::Result<()> {
 
 #[cfg(windows)]
 #[test]
-fn medatada_file_mode_test() -> io::Result<()> {
-    use std::os::windows::fs::PermissionsExt;
-    use winapi::um::winnt::FILE_ATTRIBUTE_READONLY;
-
+fn medatada_file_readonly_mode_test() -> io::Result<()> {
     let file = NamedTempFile::new()?;
     let md = file.as_file().metadata()?;
 
-    unsafe {
-        let path = file.path().as_os_str().to_string_lossy();
-        winapi::um::fileapi::SetFileAttributesW(path.as_ptr(), FILE_ATTRIBUTE_READONLY);
-    }
+    let mut perms = md.permissions();
+    perms.set_readonly(!perms.readonly());
 
     let md = MetaData::try_from(&file.as_file().metadata()?);
     assert!(md.is_some());
     let md = md.unwrap();
 
-    assert_eq!(md.mode, 0o100444); // flags + mode
-    assert_eq!(md.mode_str, "-r--r--r--");
+    assert!(md.attributes[2]); // flags + mode
+    assert_eq!(md.mode_str, "--r---");
 
     Ok(())
 }
 
+// #[cfg(windows)]
+// #[test]
+// fn medatada_dir_mode_test() -> io::Result<()> {
+//     let file = NamedTempFile::new()?;
+//     let md = file.as_file().metadata()?;
+
+//     let mut perms = md.permissions();
+//     perms.set_readonly(!perms.readonly());
+
+//     let md = MetaData::try_from(&file.as_file().metadata()?);
+//     assert!(md.is_some());
+//     let md = md.unwrap();
+
+//     assert!(md.attributes[2]); // flags + mode
+//     assert_eq!(md.mode_str, "-r--r--r--");
+
+//     Ok(())
+// }
+
+#[cfg(unix)]
 #[test]
 fn metadata_inode_or_file_index_test() -> io::Result<()> {
     let file = NamedTempFile::new()?;

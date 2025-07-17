@@ -60,10 +60,8 @@ pub struct MetaData {
     pub human_size: String,
 
     // windows mode
-    pub archive: bool,
-    pub readonly: bool,
-    pub system: bool,
-    pub hidden: bool,
+    pub mode_str: String,
+    pub attributes: [bool; 6],
 
     pub created_at: DateTime<Local>,
     pub modified_at: DateTime<Local>,
@@ -85,32 +83,16 @@ impl MetaData {
     }
     #[cfg(windows)]
     pub fn try_from(metadata: &Metadata) -> Option<Self> {
-        use std::os::windows::fs::MetadataExt;
-        use winapi::um::winnt;
-
-        let mut meta_data = MetaData {
+        Some(MetaData {
             size: metadata.len(),
             human_size: get_human_readable_size(metadata.len()),
+
+            attributes: get_based_file_attributes(metadata),
+            mode_str: get_file_mode_formated(metadata),
+
             created_at: DateTime::from(metadata.created().ok()?),
             modified_at: DateTime::from(metadata.modified().ok()?),
-            ..Default::default()
-        };
-
-        let attrs = metadata.file_attributes();
-        if (attrs & winnt::FILE_ATTRIBUTE_ARCHIVE) != 0 {
-            meta_data.archive = true;
-        }
-        if (attrs & winnt::FILE_ATTRIBUTE_READONLY) != 0 {
-            meta_data.readonly = true;
-        }
-        if (attrs & winnt::FILE_ATTRIBUTE_HIDDEN) != 0 {
-            meta_data.hidden = true;
-        }
-        if (attrs & winnt::FILE_ATTRIBUTE_SYSTEM) != 0 {
-            meta_data.system = true;
-        }
-
-        Some(meta_data)
+        })
     }
 }
 
@@ -229,27 +211,27 @@ fn get_file_mode_formated(md: &Metadata) -> String {
 }
 
 #[cfg(windows)]
-fn get_based_file_attributes(md: &Metadata) -> (bool, bool, bool, bool, bool, bool) {
+fn get_based_file_attributes(md: &Metadata) -> [bool; 6] {
     use std::os::windows::fs::MetadataExt;
     use winapi::um::winnt;
 
     let attrs = md.file_attributes();
 
-    (
+    [
         (attrs & winnt::FILE_ATTRIBUTE_DIRECTORY) != 0,
         (attrs & winnt::FILE_ATTRIBUTE_ARCHIVE) != 0,
         (attrs & winnt::FILE_ATTRIBUTE_READONLY) != 0,
         (attrs & winnt::FILE_ATTRIBUTE_HIDDEN) != 0,
         (attrs & winnt::FILE_ATTRIBUTE_SYSTEM) != 0,
         (attrs & winnt::FILE_ATTRIBUTE_REPARSE_POINT) != 0,
-    )
+    ]
 }
 #[cfg(windows)]
 fn get_file_mode_formated(md: &Metadata) -> String {
-    let (d, a, r, h, s, l) = get_based_file_attributes(md);
+    let attrs = get_based_file_attributes(md);
     let mut mode = String::with_capacity(6);
 
-    for flag in [d, a, r, h, s, l] {
+    for flag in attrs {
         mode.push(if flag {
             "darhsl".chars().nth(mode.len()).unwrap()
         } else {
@@ -287,6 +269,7 @@ fn get_human_readable_size(size: u64) -> String {
 }
 
 impl FileSystemEntry {
+    #[cfg(unix)]
     pub fn new_from_values(name: String, path: PathBuf, metadata: Metadata) -> Option<Self> {
         let meta_data = MetaData::try_from(&metadata)?;
 
@@ -305,6 +288,53 @@ impl FileSystemEntry {
                     } else {
                         None
                     },
+                    path,
+                },
+                metadata: meta_data,
+            })
+        } else if metadata.is_dir() {
+            Some(FileSystemEntry::Directory {
+                base_info: BaseInfo {
+                    name,
+                    style: Some(FileStyle {
+                        suffix: '/',
+                        color: FileColor::Blue,
+                    }),
+                    path,
+                },
+                metadata: meta_data,
+                entries: vec![],
+            })
+        } else if metadata.is_symlink() {
+            let target = fs::read_link(&path).ok()?;
+            Some(FileSystemEntry::Link {
+                base_info: BaseInfo {
+                    name,
+                    style: Some(FileStyle {
+                        suffix: '@',
+                        color: FileColor::Aqua,
+                    }),
+                    path,
+                },
+                metadata: meta_data,
+                target,
+            })
+        } else {
+            None
+        }
+    }
+    #[cfg(windows)]
+    pub fn new_from_values(name: String, path: PathBuf, metadata: Metadata) -> Option<Self> {
+        let meta_data = MetaData::try_from(&metadata)?;
+
+        if metadata.is_file() {
+            Some(FileSystemEntry::File {
+                extension: path
+                    .extension()
+                    .and_then(|s| s.to_str().map(|s| s.to_string())),
+                base_info: BaseInfo {
+                    name,
+                    style: None,
                     path,
                 },
                 metadata: meta_data,
@@ -424,6 +454,7 @@ impl FileSystemEntry {
     pub fn to_string_short(&self) -> String {
         self.get_styled_name()
     }
+    #[cfg(unix)]
     pub fn to_string_long(
         &self,
         human_size: bool,
@@ -441,6 +472,25 @@ impl FileSystemEntry {
             } else {
                 String::new()
             },
+            md.mode_str,
+            if human_size {
+                md.human_size.to_string()
+            } else {
+                md.size.to_string()
+            },
+            date_str,
+            styled_name,
+            size_width = max_size,
+            time_width = max_time,
+        )
+    }
+    #[cfg(windows)]
+    pub fn to_string_long(&self, human_size: bool, max_size: usize, max_time: usize) -> String {
+        let styled_name = self.get_styled_name();
+        let md = self.metadata();
+        let date_str = md.modified_at.format("%b %e %R");
+        format!(
+            "{} {:<size_width$} {:>time_width$} {}",
             md.mode_str,
             if human_size {
                 md.human_size.to_string()
