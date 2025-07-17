@@ -1,14 +1,13 @@
 use std::{
     env,
     fs::{self, DirEntry, Metadata},
-    io,
     os::unix::fs::{MetadataExt, PermissionsExt},
     path::PathBuf,
 };
 
 use chrono::{DateTime, Local};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FileColor {
     // for links with no-exist target
     Red,
@@ -59,7 +58,7 @@ impl MetaData {
             human_size: get_human_readable_size(metadata.len()),
             inode: metadata.ino(),
             mode: metadata.mode(),
-            mode_str: get_file_mode_formated(&metadata).ok()?,
+            mode_str: get_file_mode_formated(&metadata),
             executable: metadata.is_file() && metadata.permissions().mode() & 0o111 != 0,
             created_at: DateTime::from(metadata.created().ok()?),
             modified_at: DateTime::from(metadata.modified().ok()?),
@@ -81,6 +80,43 @@ pub struct BaseInfo {
     pub path: PathBuf,
 }
 
+pub enum FileType {
+    File,
+    Directory,
+    Link,
+}
+
+impl From<&FileSystemEntry> for FileType {
+    fn from(entry: &FileSystemEntry) -> Self {
+        match entry {
+            FileSystemEntry::File { .. } => FileType::File,
+            FileSystemEntry::Directory { .. } => FileType::Directory,
+            FileSystemEntry::Link { .. } => FileType::Link,
+        }
+    }
+}
+
+impl FileType {
+    pub fn is_file(&self) -> bool {
+        match self {
+            FileType::File => true,
+            _ => false,
+        }
+    }
+    pub fn is_directory(&self) -> bool {
+        match self {
+            FileType::Directory => true,
+            _ => false,
+        }
+    }
+    pub fn is_link(&self) -> bool {
+        match self {
+            FileType::Link => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum FileSystemEntry {
     File {
@@ -100,7 +136,7 @@ pub enum FileSystemEntry {
     },
 }
 
-fn get_file_mode_formated(md: &Metadata) -> io::Result<String> {
+fn get_file_mode_formated(md: &Metadata) -> String {
     let perm = md.permissions();
     let mode = perm.mode();
 
@@ -140,7 +176,7 @@ fn get_file_mode_formated(md: &Metadata) -> io::Result<String> {
         if mode & 0o1000 != 0 { 'T' } else { '-' }
     });
 
-    Ok(builder)
+    builder
 }
 
 fn get_human_readable_size(size: u64) -> String {
@@ -278,7 +314,7 @@ impl FileSystemEntry {
         } else {
             PathBuf::from(path.as_ref())
         };
-        let metadata = fs::metadata(&path).ok()?;
+        let metadata = fs::symlink_metadata(&path).ok()?;
 
         let name = path.file_name()?.to_string_lossy().to_string();
 
@@ -296,6 +332,13 @@ impl FileSystemEntry {
             FileSystemEntry::File { base_info, .. } => &base_info.name,
             FileSystemEntry::Directory { base_info, .. } => &base_info.name,
             FileSystemEntry::Link { base_info, .. } => &base_info.name,
+        }
+    }
+    pub fn style(&self) -> Option<&FileStyle> {
+        match self {
+            FileSystemEntry::File { base_info, .. } => base_info.style.as_ref(),
+            FileSystemEntry::Directory { base_info, .. } => base_info.style.as_ref(),
+            FileSystemEntry::Link { base_info, .. } => base_info.style.as_ref(),
         }
     }
     pub fn to_string_short(&self) -> String {
