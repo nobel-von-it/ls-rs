@@ -189,8 +189,7 @@ impl TextFormatter {
                 let idx = col * rows + row;
                 if idx < total_items {
                     let name = &self.names[idx];
-                    let temp_col_width = col_width - if name.starts_with("\x1b") { 0 } else { 9 };
-                    line.push_str(&format!("{name:<temp_col_width$}"));
+                    line.push_str(&format!("{name:<col_width$}"));
                 }
             }
 

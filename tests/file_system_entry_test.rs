@@ -1,6 +1,6 @@
 use tempfile::{NamedTempFile, TempDir};
 
-use ls_rs::files::{FileSystemEntry, FileType};
+use ls_rs::files::{FileColor, FileSystemEntry, FileType};
 
 #[test]
 fn fse_from_file_path_test() {
@@ -78,10 +78,14 @@ fn fse_file_styled_name_test() {
         file.path().file_name().unwrap().to_string_lossy()
     );
     let style = fse.style();
-    assert!(style.is_none());
+    assert!(style.suffix.is_none());
+    assert_eq!(style.color, FileColor::White);
+
     let styled = fse.get_styled_name();
     // Until extension is not supported file is displayed without styles
-    assert_eq!(styled, fse.name());
+    assert!(styled.starts_with("\x1b"));
+    assert!(styled.contains(fse.name()));
+    assert_ne!(styled, fse.name());
 }
 
 #[cfg(unix)]
@@ -98,11 +102,9 @@ fn fse_file_executable_styled_name_test() {
 
     let fse = FileSystemEntry::from_path(file.path().to_string_lossy()).unwrap();
 
-    let res = fse.style();
-    assert!(res.is_some());
-    let style = res.unwrap();
-    assert_eq!(style.suffix, ' ');
-    assert_eq!(style.color, ls_rs::files::FileColor::Green);
+    let style = fse.style();
+    assert!(style.suffix.is_none());
+    assert_eq!(style.color, FileColor::Green);
 
     let styled = fse.get_styled_name();
     assert!(styled.starts_with("\x1b[32m"));
@@ -118,10 +120,11 @@ fn fse_dir_styled_name_test() {
         dir.path().file_name().unwrap().to_string_lossy()
     );
     let style = fse.style();
-    assert!(style.is_some());
-    let style = style.unwrap();
-    assert_eq!(style.suffix, '/');
-    assert_eq!(style.color, ls_rs::files::FileColor::Blue);
+    assert!(style.suffix.is_some());
+    let suffix = style.suffix.unwrap();
+    assert_eq!(suffix, '/');
+    assert_eq!(style.color, FileColor::Blue);
+
     let styled = fse.get_styled_name();
     assert!(styled.starts_with("\x1b[34m"));
     assert!(styled.contains(fse.name()));
@@ -142,11 +145,13 @@ fn fse_link_styled_name_test() {
 
     let fse = FileSystemEntry::from_path(link.to_string_lossy()).unwrap();
     assert_eq!(fse.name(), "link.link");
+
     let style = fse.style();
-    assert!(style.is_some());
-    let style = style.unwrap();
-    assert_eq!(style.suffix, '@');
-    assert_eq!(style.color, ls_rs::files::FileColor::Aqua);
+    assert!(style.suffix.is_some());
+    let suffix = style.suffix.unwrap();
+    assert_eq!(suffix, '@');
+    assert_eq!(style.color, FileColor::Aqua);
+
     let styled = fse.get_styled_name();
     assert!(styled.starts_with("\x1b[36m"));
     assert!(styled.contains(fse.name()));

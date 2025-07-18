@@ -6,7 +6,7 @@ use std::{
 
 use chrono::{DateTime, Local};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum FileColor {
     // for links with no-exist target
     Red,
@@ -16,6 +16,9 @@ pub enum FileColor {
     Blue,
     // for executable
     Green,
+    // default,
+    #[default]
+    White,
     // TODO: for files by file extension (white by default)
     Other,
 }
@@ -27,7 +30,7 @@ impl FileColor {
             FileColor::Green => "\x1b[32m",
             FileColor::Blue => "\x1b[34m",
             FileColor::Aqua => "\x1b[36m",
-            FileColor::Other => "\x1b[37m",
+            FileColor::Other | FileColor::White => "\x1b[37m",
         }
     }
     pub fn reset(&self) -> &str {
@@ -96,16 +99,16 @@ impl MetaData {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct FileStyle {
-    pub suffix: char,
+    pub suffix: Option<char>,
     pub color: FileColor,
 }
 
 #[derive(Debug, Clone)]
 pub struct BaseInfo {
     pub name: String,
-    pub style: Option<FileStyle>,
+    pub style: FileStyle,
 
     pub path: PathBuf,
 }
@@ -283,12 +286,12 @@ impl FileSystemEntry {
                 base_info: BaseInfo {
                     name,
                     style: if meta_data.executable {
-                        Some(FileStyle {
-                            suffix: ' ',
+                        FileStyle {
+                            suffix: None,
                             color: FileColor::Green,
-                        })
+                        }
                     } else {
-                        None
+                        FileStyle::default()
                     },
                     path,
                 },
@@ -298,10 +301,10 @@ impl FileSystemEntry {
             Some(FileSystemEntry::Directory {
                 base_info: BaseInfo {
                     name,
-                    style: Some(FileStyle {
-                        suffix: '/',
+                    style: FileStyle {
+                        suffix: Some('/'),
                         color: FileColor::Blue,
-                    }),
+                    },
                     path,
                 },
                 metadata: meta_data,
@@ -312,10 +315,10 @@ impl FileSystemEntry {
             Some(FileSystemEntry::Link {
                 base_info: BaseInfo {
                     name,
-                    style: Some(FileStyle {
-                        suffix: '@',
+                    style: FileStyle {
+                        suffix: Some('@'),
                         color: FileColor::Aqua,
-                    }),
+                    },
                     path,
                 },
                 metadata: meta_data,
@@ -336,7 +339,7 @@ impl FileSystemEntry {
                     .and_then(|s| s.to_str().map(|s| s.to_string())),
                 base_info: BaseInfo {
                     name,
-                    style: None,
+                    style: FileStyle::default(),
                     path,
                 },
                 metadata: meta_data,
@@ -345,10 +348,10 @@ impl FileSystemEntry {
             Some(FileSystemEntry::Directory {
                 base_info: BaseInfo {
                     name,
-                    style: Some(FileStyle {
-                        suffix: '/',
+                    style: FileStyle {
+                        suffix: Some('/'),
                         color: FileColor::Blue,
-                    }),
+                    },
                     path,
                 },
                 metadata: meta_data,
@@ -359,10 +362,10 @@ impl FileSystemEntry {
             Some(FileSystemEntry::Link {
                 base_info: BaseInfo {
                     name,
-                    style: Some(FileStyle {
-                        suffix: '@',
+                    style: FileStyle {
+                        suffix: Some('@'),
                         color: FileColor::Aqua,
-                    }),
+                    },
                     path,
                 },
                 metadata: meta_data,
@@ -379,17 +382,18 @@ impl FileSystemEntry {
         }
     }
     pub fn get_styled_name_by_info(&self, info: &BaseInfo) -> String {
-        if let Some(style) = &info.style {
-            format!(
-                "{}{}{}{}",
-                style.color.get_code(),
-                info.name,
-                style.color.reset(),
-                style.suffix
-            )
+        let suffix = if let Some(suffix) = info.style.suffix {
+            suffix.to_string()
         } else {
-            format!("{}", info.name)
-        }
+            String::new()
+        };
+        format!(
+            "{}{}{}{}",
+            info.style.color.get_code(),
+            info.name,
+            info.style.color.reset(),
+            suffix
+        )
     }
     pub fn get_styled_name(&self) -> String {
         match self {
@@ -452,11 +456,11 @@ impl FileSystemEntry {
             FileSystemEntry::Link { base_info, .. } => &base_info.name,
         }
     }
-    pub fn style(&self) -> Option<&FileStyle> {
+    pub fn style(&self) -> &FileStyle {
         match self {
-            FileSystemEntry::File { base_info, .. } => base_info.style.as_ref(),
-            FileSystemEntry::Directory { base_info, .. } => base_info.style.as_ref(),
-            FileSystemEntry::Link { base_info, .. } => base_info.style.as_ref(),
+            FileSystemEntry::File { base_info, .. } => &base_info.style,
+            FileSystemEntry::Directory { base_info, .. } => &base_info.style,
+            FileSystemEntry::Link { base_info, .. } => &base_info.style,
         }
     }
     pub fn to_string_short(&self) -> String {
