@@ -4,7 +4,10 @@ INSTALL_DIR := $(CARGO_HOME)/bin
 
 all: build
 
-build:
+test:
+	cargo test
+
+build: test
 	cargo build --release
 
 install: build
