@@ -1,6 +1,6 @@
 use std::{fs, io};
 
-use ls_rs::{command, files::FileSystemEntry, printer::Printer};
+use ls_rs::{command, data_op::Printer, files::FileSystemEntry};
 
 fn main() -> io::Result<()> {
     let matches = command::ls_command().get_matches();
@@ -21,9 +21,7 @@ fn main() -> io::Result<()> {
         }
     }
 
-    let mut printer = Printer::new(config, start_dir);
-    if let Some(printer) = printer.json_checker() {
-        printer.filter().sort().prepare().print();
-    }
+    let printer = Printer::new(start_dir, config);
+    printer.print();
     Ok(())
 }

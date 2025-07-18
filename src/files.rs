@@ -372,6 +372,12 @@ impl FileSystemEntry {
             None
         }
     }
+    pub fn get_dir_entries(&self) -> Option<Vec<FileSystemEntry>> {
+        match self {
+            FileSystemEntry::Directory { entries, .. } => Some(entries.clone()),
+            _ => None,
+        }
+    }
     pub fn get_styled_name_by_info(&self, info: &BaseInfo) -> String {
         if let Some(style) = &info.style {
             format!(
