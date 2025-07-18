@@ -1,5 +1,3 @@
-#[cfg(unix)]
-use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::{
     env,
     fs::{self, DirEntry, Metadata},
@@ -70,7 +68,9 @@ pub struct MetaData {
 impl MetaData {
     #[cfg(unix)]
     pub fn try_from(metadata: &Metadata) -> Option<Self> {
-        metadata.Some(MetaData {
+        use std::os::unix::fs::{MetadataExt, PermissionsExt};
+
+        Some(MetaData {
             size: metadata.len(),
             human_size: get_human_readable_size(metadata.len()),
             inode: metadata.ino(),
@@ -168,6 +168,8 @@ pub enum FileSystemEntry {
 
 #[cfg(unix)]
 fn get_file_mode_formated(md: &Metadata) -> String {
+    use std::os::unix::fs::PermissionsExt;
+
     let perm = md.permissions();
     let mode = perm.mode();
 

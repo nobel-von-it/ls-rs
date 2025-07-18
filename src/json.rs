@@ -5,6 +5,18 @@ pub trait Serializer {
     fn long_json(&self) -> String;
 }
 
+fn add_quotes(s: &str) -> String {
+    format!("\"{}\"", s)
+}
+
+fn form_field(buf: &mut String, k: &str, v: String, is_last: bool) {
+    buf.push_str(&format!("  \"{}\": {}", k, v));
+    if !is_last {
+        buf.push(',');
+    }
+    buf.push('\n');
+}
+
 impl Serializer for FileSystemEntry {
     fn short_json(&self) -> String {
         match self {
@@ -125,16 +137,4 @@ impl Serializer for FileSystemEntry {
     fn long_json(&self) -> String {
         String::new()
     }
-}
-
-fn add_quotes(s: &str) -> String {
-    format!("\"{}\"", s)
-}
-
-fn form_field(buf: &mut String, k: &str, v: String, is_last: bool) {
-    buf.push_str(&format!("  \"{}\": {}", k, v));
-    if !is_last {
-        buf.push(',');
-    }
-    buf.push('\n');
 }
