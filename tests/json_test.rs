@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use ls_rs::{files::FileSystemEntry, json::Serializer};
 use tempfile::{NamedTempFile, TempDir};
 
