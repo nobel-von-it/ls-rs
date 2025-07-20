@@ -5,9 +5,18 @@ use crate::{
     term,
 };
 
+#[derive(Debug, Clone)]
 pub struct DataProcessor {
     entries: Vec<FileSystemEntry>,
     config: Config,
+}
+impl PartialEq for DataProcessor {
+    fn eq(&self, other: &Self) -> bool {
+        self.entries
+            .iter()
+            .zip(other.entries.iter())
+            .all(|(fse1, fse2)| fse1.get_styled_name().eq(&fse2.get_styled_name()))
+    }
 }
 
 impl DataProcessor {

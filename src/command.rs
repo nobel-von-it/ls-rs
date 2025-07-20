@@ -61,7 +61,7 @@ pub fn ls_command() -> Command {
         ))
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Config {
     pub path: String,
     pub cols: Option<usize>,
