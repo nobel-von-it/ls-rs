@@ -6,11 +6,11 @@ pub trait Serializer {
 }
 
 fn add_quotes(s: &str) -> String {
-    format!("\"{}\"", s)
+    format!("\"{s}\"")
 }
 
 fn form_field(buf: &mut String, k: &str, v: String, is_last: bool) {
-    buf.push_str(&format!("  \"{}\": {}", k, v));
+    buf.push_str(&format!("  \"{k}\": {v}"));
     if !is_last {
         buf.push(',');
     }
@@ -46,7 +46,7 @@ impl Serializer for FileSystemEntry {
                 );
 
                 let extension = add_quotes(if let Some(ext) = extension {
-                    &ext
+                    ext
                 } else {
                     "null"
                 });
@@ -87,12 +87,7 @@ impl Serializer for FileSystemEntry {
                     .collect::<Vec<_>>()
                     .join(",\n");
 
-                form_field(
-                    &mut json,
-                    "entries",
-                    format!("[\n{}\n]", children_json),
-                    true,
-                );
+                form_field(&mut json, "entries", format!("[\n{children_json}\n]"), true);
 
                 json.push('}');
                 json

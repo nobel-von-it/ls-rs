@@ -131,22 +131,13 @@ impl From<&FileSystemEntry> for FileType {
 
 impl FileType {
     pub fn is_file(&self) -> bool {
-        match self {
-            FileType::File => true,
-            _ => false,
-        }
+        matches!(self, FileType::File)
     }
     pub fn is_directory(&self) -> bool {
-        match self {
-            FileType::Directory => true,
-            _ => false,
-        }
+        matches!(self, FileType::Directory)
     }
     pub fn is_link(&self) -> bool {
-        match self {
-            FileType::Link => true,
-            _ => false,
-        }
+        matches!(self, FileType::Link)
     }
 }
 
@@ -267,9 +258,9 @@ fn get_human_readable_size(size: u64) -> String {
     if rounded.fract() == 0. {
         format!("{}{}", rounded as i64, suffix)
     } else if rounded.fract() * 10. % 1. == 0. {
-        format!("{:.1}{}", rounded, suffix)
+        format!("{rounded:.1}{suffix}")
     } else {
-        format!("{:.2}{}", rounded, suffix)
+        format!("{rounded:.2}{suffix}")
     }
 }
 
@@ -376,19 +367,15 @@ impl FileSystemEntry {
         }
     }
     pub fn fill_start_dir(&mut self) {
-        match self {
-            FileSystemEntry::Directory {
-                base_info, entries, ..
-            } => {
-                for entry in fs::read_dir(&base_info.path).unwrap() {
-                    if let Ok(entry) = entry {
-                        if let Some(entry) = FileSystemEntry::from_dir_entry(entry) {
-                            entries.push(entry);
-                        }
-                    }
+        if let FileSystemEntry::Directory {
+            base_info, entries, ..
+        } = self
+        {
+            for entry in fs::read_dir(&base_info.path).unwrap().flatten() {
+                if let Some(entry) = FileSystemEntry::from_dir_entry(entry) {
+                    entries.push(entry);
                 }
             }
-            _ => {}
         }
     }
     pub fn get_dir_entries(&self) -> Option<Vec<FileSystemEntry>> {
@@ -413,11 +400,9 @@ impl FileSystemEntry {
     }
     pub fn get_styled_name(&self) -> String {
         match self {
-            FileSystemEntry::File { base_info, .. } => self.get_styled_name_by_info(&base_info),
-            FileSystemEntry::Directory { base_info, .. } => {
-                self.get_styled_name_by_info(&base_info)
-            }
-            FileSystemEntry::Link { base_info, .. } => self.get_styled_name_by_info(&base_info),
+            FileSystemEntry::File { base_info, .. } => self.get_styled_name_by_info(base_info),
+            FileSystemEntry::Directory { base_info, .. } => self.get_styled_name_by_info(base_info),
+            FileSystemEntry::Link { base_info, .. } => self.get_styled_name_by_info(base_info),
         }
     }
     pub fn is_hidden(&self) -> bool {
@@ -525,44 +510,5 @@ impl FileSystemEntry {
             size_width = max_size,
             time_width = max_time,
         )
-    }
-
-    fn _get_name_and_metadata(&self) -> (&str, &MetaData) {
-        match self {
-            FileSystemEntry::File {
-                base_info,
-                metadata,
-                ..
-            } => (&base_info.name, &metadata),
-            FileSystemEntry::Directory {
-                base_info,
-                metadata,
-                ..
-            } => (&base_info.name, &metadata),
-            FileSystemEntry::Link {
-                base_info,
-                metadata,
-                ..
-            } => (&base_info.name, &metadata),
-        }
-    }
-    fn _get_info_and_metadata(&self) -> (&BaseInfo, &MetaData) {
-        match self {
-            FileSystemEntry::File {
-                base_info,
-                metadata,
-                ..
-            } => (base_info, metadata),
-            FileSystemEntry::Directory {
-                base_info,
-                metadata,
-                ..
-            } => (base_info, metadata),
-            FileSystemEntry::Link {
-                base_info,
-                metadata,
-                ..
-            } => (base_info, metadata),
-        }
     }
 }

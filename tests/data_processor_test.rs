@@ -1,5 +1,42 @@
 use std::{fs, io};
 
+struct DpTestConfig {
+    count_files: usize,
+    add_hidden: bool,
+    // usize is end of range 0..content_size
+    add_some_content: Option<usize>,
+}
+impl DpTestConfig {
+    fn new(count_files: usize, add_hidden: bool, add_some_content: Option<usize>) -> Self {
+        Self {
+            count_files,
+            add_hidden,
+            add_some_content,
+        }
+    }
+    fn setup_config_and_start_dir(&self, args: &[&str]) -> io::Result<(FileSystemEntry, Config)> {
+        let matches = command::ls_command().get_matches_from(args);
+        let config = command::Config::clap_parse(&matches);
+
+        let dir = TempDir::new()?;
+        if self.add_hidden {
+            for i in 0..self.count_files / 2 {
+                fs::File::create(dir.path().join(format!("file{i}.txt")))?;
+                fs::File::create(dir.path().join(format!(".file{}.txt", i * 2)))?;
+            }
+        } else {
+            for i in 0..self.count_files {
+                fs::File::create(dir.path().join(format!("file{i}.txt")))?;
+            }
+        }
+
+        let mut fse = FileSystemEntry::from_path(dir.path().to_string_lossy()).unwrap();
+        fse.fill_start_dir();
+
+        Ok((fse, config))
+    }
+}
+
 use ls_rs::{
     command::{self, Config},
     data_op::DataProcessor,
@@ -7,36 +44,11 @@ use ls_rs::{
 };
 use tempfile::TempDir;
 
-fn dp_setup_config_and_start_dir(
-    args: &[&str],
-    count_files: u8,
-    add_hidden: bool,
-) -> io::Result<(FileSystemEntry, Config)> {
-    let matches = command::ls_command().get_matches_from(args);
-    let config = command::Config::clap_parse(&matches);
-
-    let dir = TempDir::new()?;
-    if add_hidden {
-        for i in 0..count_files / 2 {
-            fs::File::create(dir.path().join(format!("file{}.txt", i)))?;
-            fs::File::create(dir.path().join(format!(".file{}.txt", i * 2)))?;
-        }
-    } else {
-        for i in 0..count_files {
-            fs::File::create(dir.path().join(format!("file{}.txt", i)))?;
-        }
-    }
-
-    let mut fse = FileSystemEntry::from_path(dir.path().to_string_lossy()).unwrap();
-    fse.fill_start_dir();
-
-    Ok((fse, config))
-}
-
 #[test]
 fn dp_filter_test() {
+    let dp_config = DpTestConfig::new(10, true, None);
     let file_count = 10;
-    let (fse, config) = dp_setup_config_and_start_dir(&["ls_rs"], file_count, true).unwrap();
+    let (fse, config) = dp_config.setup_config_and_start_dir(&["ls_rs"]).unwrap();
     assert!(!config.all);
 
     let mut dp = DataProcessor::new(fse.get_dir_entries().unwrap(), config);

@@ -144,7 +144,7 @@ impl TextFormatter {
         let max_width = self.names.iter().map(|n| n.len()).max().unwrap_or(1);
         let col_width = max_width + 2;
         let total_items = self.names.len();
-        let rows = (total_items + cols - 1) / cols;
+        let rows = total_items.div_ceil(cols);
 
         let mut output = String::new();
         for row in 0..rows {
@@ -182,7 +182,7 @@ impl TextFormatter {
         let col_width = max_width + 2;
         let max_cols = (term_cols / col_width).max(1);
         let total_items = self.names.len();
-        let rows = (total_items + max_cols - 1) / max_cols;
+        let rows = total_items.div_ceil(max_cols);
 
         let mut output = String::new();
         for row in 0..rows {
@@ -245,10 +245,10 @@ impl Printer {
             (_, true) => Box::new(JsonFormatter::new(start_dir, false)),
             _ => {
                 let long = config.long;
-                let cols = config.cols.clone();
+                let cols = config.cols;
 
                 let processor =
-                    DataProcessor::new(start_dir.get_dir_entries().unwrap_or(vec![]), config);
+                    DataProcessor::new(start_dir.get_dir_entries().unwrap_or_default(), config);
 
                 let prepared_data = processor.filter().sort().prepare();
                 Box::new(TextFormatter::new(prepared_data.names, long, cols))

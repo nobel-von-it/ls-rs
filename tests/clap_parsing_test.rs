@@ -23,7 +23,7 @@ use ls_rs::command;
 #[test]
 fn flag_la_test() {
     let args = ["ls-rs", "-la"];
-    let matches = command::ls_command().get_matches_from(&args);
+    let matches = command::ls_command().get_matches_from(args);
     let config = command::Config::clap_parse(&matches);
 
     assert!(config.long);
@@ -35,7 +35,7 @@ fn flag_la_test() {
 #[test]
 fn flag_full_in_one_test() {
     let args = ["ls-rs", "-alnHrNTSRoijJ"];
-    let matches = command::ls_command().get_matches_from(&args);
+    let matches = command::ls_command().get_matches_from(args);
     let config = command::Config::clap_parse(&matches);
 
     assert!(config.all);
@@ -73,7 +73,7 @@ fn flag_full_full_test() {
         "--json",
         "--JSON",
     ];
-    let matches = command::ls_command().get_matches_from(&args);
+    let matches = command::ls_command().get_matches_from(args);
     let config = command::Config::clap_parse(&matches);
 
     assert!(config.all);
@@ -98,7 +98,7 @@ fn flag_full_short_test() {
     let args = [
         "ls-rs", "-a", "-l", "-n", "-H", "-r", "-N", "-T", "-S", "-R", "-o", "-i", "-j", "-J",
     ];
-    let matches = command::ls_command().get_matches_from(&args);
+    let matches = command::ls_command().get_matches_from(args);
     let config = command::Config::clap_parse(&matches);
 
     assert!(config.all);
@@ -124,7 +124,7 @@ fn flag_valuable_test() {
     const COLS: usize = 10;
 
     let args = ["ls-rs", "-C", &COLS.to_string(), PATH];
-    let matches = command::ls_command().get_matches_from(&args);
+    let matches = command::ls_command().get_matches_from(args);
     let config = command::Config::clap_parse(&matches);
 
     assert!(!config.all);
