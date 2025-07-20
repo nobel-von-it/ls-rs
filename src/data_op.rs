@@ -40,7 +40,6 @@ impl DataProcessor {
 
 pub struct PreparedData {
     names: Vec<String>,
-    config: Config,
 }
 
 impl PreparedData {
@@ -56,7 +55,7 @@ impl PreparedData {
         } else {
             names
         };
-        Self { names, config }
+        Self { names }
     }
 
     fn prepare_short(entries: &[FileSystemEntry], _config: &Config) -> Vec<String> {
