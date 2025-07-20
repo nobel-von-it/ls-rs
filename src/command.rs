@@ -48,7 +48,7 @@ pub fn ls_command() -> Command {
         .arg(arg_bool_t("time", false, "Sort by time", 'T', false))
         .arg(arg_bool_t("size", false, "Sort by size", 'S', false))
         // .arg(arg_bool_t("ext", false, "Sort by extension", 'X', false))
-        .arg(arg_bool_t("recursive", false, "Recursive", 'R', false))
+        .arg(arg_flag_t("recursive", false, "Recursive", 'R'))
         .arg(arg_bool("one", false, "One line input", false))
         .arg(arg_bool("inode", false, "Add inode info to output", false))
         .arg(arg_bool_t("json", false, "Short json output", 'j', false))
@@ -74,7 +74,7 @@ pub struct Config {
     pub time_sort: bool,
     pub size_sort: bool,
     // pub ext_sort: bool,
-    pub recursive: bool,
+    pub recursive: Option<usize>,
     pub one_col: bool,
     pub inode: bool,
     pub json_mini: bool,
@@ -100,7 +100,13 @@ impl Config {
             time_sort: *matches.get_one("time").unwrap(),
             size_sort: *matches.get_one("size").unwrap(),
             // ext_sort: *matches.get_one("ext").unwrap(),
-            recursive: *matches.get_one("recursive").unwrap(),
+            recursive: matches.get_one::<String>("recursive").map(|depth| {
+                if depth.to_lowercase() == "max" {
+                    40
+                } else {
+                    depth.parse::<usize>().unwrap_or(1)
+                }
+            }),
             one_col: *matches.get_one("one").unwrap(),
             inode: *matches.get_one("inode").unwrap(),
             json_mini: *matches.get_one("json").unwrap(),

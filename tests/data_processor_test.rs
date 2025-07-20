@@ -30,8 +30,7 @@ impl DpTestConfig {
             }
         }
 
-        let mut fse = FileSystemEntry::from_path(dir.path().to_string_lossy()).unwrap();
-        fse.fill_start_dir();
+        let fse = FileSystemEntry::new_with_config(&config).unwrap();
 
         Ok((fse, config))
     }

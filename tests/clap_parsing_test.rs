@@ -34,7 +34,7 @@ fn flag_la_test() {
 
 #[test]
 fn flag_full_in_one_test() {
-    let args = ["ls-rs", "-alnHrNTSRoijJ"];
+    let args = ["ls-rs", "-alnHrNTSoijJ"];
     let matches = command::ls_command().get_matches_from(args);
     let config = command::Config::clap_parse(&matches);
 
@@ -46,13 +46,13 @@ fn flag_full_in_one_test() {
     assert!(config.name_sort);
     assert!(config.time_sort);
     assert!(config.size_sort);
-    assert!(config.recursive);
     assert!(config.one_col);
     assert!(config.inode);
     assert!(config.json_mini);
     assert!(config.json_big);
 
     assert_eq!(config.cols, None);
+    assert_eq!(config.recursive, None);
 }
 
 #[test]
@@ -67,7 +67,6 @@ fn flag_full_full_test() {
         "--sort",
         "--time",
         "--size",
-        "--recursive",
         "--one",
         "--inode",
         "--json",
@@ -84,19 +83,19 @@ fn flag_full_full_test() {
     assert!(config.name_sort);
     assert!(config.time_sort);
     assert!(config.size_sort);
-    assert!(config.recursive);
     assert!(config.one_col);
     assert!(config.inode);
     assert!(config.json_mini);
     assert!(config.json_big);
 
     assert_eq!(config.cols, None);
+    assert_eq!(config.recursive, None);
 }
 
 #[test]
 fn flag_full_short_test() {
     let args = [
-        "ls-rs", "-a", "-l", "-n", "-H", "-r", "-N", "-T", "-S", "-R", "-o", "-i", "-j", "-J",
+        "ls-rs", "-a", "-l", "-n", "-H", "-r", "-N", "-T", "-S", "-o", "-i", "-j", "-J",
     ];
     let matches = command::ls_command().get_matches_from(args);
     let config = command::Config::clap_parse(&matches);
@@ -109,21 +108,29 @@ fn flag_full_short_test() {
     assert!(config.name_sort);
     assert!(config.time_sort);
     assert!(config.size_sort);
-    assert!(config.recursive);
     assert!(config.one_col);
     assert!(config.inode);
     assert!(config.json_mini);
     assert!(config.json_big);
 
     assert_eq!(config.cols, None);
+    assert_eq!(config.recursive, None);
 }
 
 #[test]
 fn flag_valuable_test() {
     const PATH: &str = "sldkjfskdfj";
     const COLS: usize = 10;
+    const DEPTH: usize = 3;
 
-    let args = ["ls-rs", "-C", &COLS.to_string(), PATH];
+    let args = [
+        "ls-rs",
+        "-C",
+        &COLS.to_string(),
+        PATH,
+        "-R",
+        &DEPTH.to_string(),
+    ];
     let matches = command::ls_command().get_matches_from(args);
     let config = command::Config::clap_parse(&matches);
 
@@ -135,7 +142,6 @@ fn flag_valuable_test() {
     assert!(!config.name_sort);
     assert!(!config.time_sort);
     assert!(!config.size_sort);
-    assert!(!config.recursive);
     assert!(!config.one_col);
     assert!(!config.inode);
     assert!(!config.json_mini);
@@ -143,4 +149,5 @@ fn flag_valuable_test() {
 
     assert_eq!(config.path, PATH);
     assert_eq!(config.cols, Some(COLS));
+    assert_eq!(config.recursive, Some(DEPTH));
 }

@@ -1,10 +1,13 @@
 use std::{
+    collections::HashSet,
     env,
     fs::{self, DirEntry, Metadata},
     path::PathBuf,
 };
 
 use chrono::{DateTime, Local};
+
+use crate::command::Config;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum FileColor {
@@ -265,6 +268,19 @@ fn get_human_readable_size(size: u64) -> String {
 }
 
 impl FileSystemEntry {
+    pub fn new_with_config(config: &Config) -> Option<Self> {
+        let path = if config.path.eq(".") {
+            env::current_dir().ok()?
+        } else {
+            PathBuf::from(&config.path)
+        };
+        let name = path.file_name()?.to_str()?.to_string();
+        let metadata = fs::symlink_metadata(&path).ok()?;
+        let mut fse = Self::new_from_values(name, path, metadata)?;
+
+        fse.fill_start_dir(config.recursive);
+        Some(fse)
+    }
     #[cfg(unix)]
     pub fn new_from_values(name: String, path: PathBuf, metadata: Metadata) -> Option<Self> {
         let meta_data = MetaData::try_from(&metadata)?;
@@ -366,14 +382,63 @@ impl FileSystemEntry {
             None
         }
     }
-    pub fn fill_start_dir(&mut self) {
+    pub fn fill_start_dir(&mut self, recursive: Option<usize>) {
+        if let Some(depth) = recursive {
+            let mut visited_paths = HashSet::new();
+            self.fill_dir_recursive_safe(depth, 0, &mut visited_paths);
+        } else {
+            self.fill_dir_non_recursive();
+        }
+    }
+    fn fill_dir_recursive_safe(
+        &mut self,
+        max_depth: usize,
+        current_depth: usize,
+        visited_paths: &mut HashSet<PathBuf>,
+    ) {
+        if let FileSystemEntry::Directory {
+            base_info, entries, ..
+        } = self
+        {
+            if current_depth >= max_depth {
+                return;
+            }
+
+            let canonical_path = match base_info.path.canonicalize() {
+                Ok(path) => path,
+                Err(_) => return,
+            };
+
+            if visited_paths.contains(&canonical_path) {
+                return;
+            }
+            visited_paths.insert(canonical_path.clone());
+
+            let dir_entries = match fs::read_dir(&base_info.path) {
+                Ok(entries) => entries,
+                Err(_) => return,
+            };
+
+            for entry in dir_entries.flatten() {
+                if let Some(mut fse) = FileSystemEntry::from_dir_entry(entry) {
+                    if let FileSystemEntry::Directory { .. } = &mut fse {
+                        fse.fill_dir_recursive_safe(max_depth, current_depth + 1, visited_paths);
+                    }
+                    entries.push(fse);
+                }
+            }
+
+            visited_paths.remove(&canonical_path);
+        }
+    }
+    fn fill_dir_non_recursive(&mut self) {
         if let FileSystemEntry::Directory {
             base_info, entries, ..
         } = self
         {
             for entry in fs::read_dir(&base_info.path).unwrap().flatten() {
-                if let Some(entry) = FileSystemEntry::from_dir_entry(entry) {
-                    entries.push(entry);
+                if let Some(fse) = FileSystemEntry::from_dir_entry(entry) {
+                    entries.push(fse)
                 }
             }
         }
@@ -461,6 +526,9 @@ impl FileSystemEntry {
     }
     pub fn to_string_short(&self) -> String {
         self.get_styled_name()
+    }
+    pub fn is_dir(&self) -> bool {
+        matches!(self, FileSystemEntry::Directory { .. })
     }
     #[cfg(unix)]
     pub fn to_string_long(

@@ -234,15 +234,65 @@ impl OutputFormatter for JsonFormatter {
     }
 }
 
+pub struct RecursiveFormatter {
+    entry: FileSystemEntry,
+    depth: usize,
+    max_depth: Option<usize>,
+}
+impl OutputFormatter for RecursiveFormatter {
+    fn format(&self) -> String {
+        self.format_recursive(&self.entry, self.depth)
+    }
+}
+
+impl RecursiveFormatter {
+    fn new(entry: FileSystemEntry, max_depth: Option<usize>) -> Self {
+        Self {
+            entry,
+            depth: 0,
+            max_depth,
+        }
+    }
+    fn format_recursive(&self, entry: &FileSystemEntry, current_depth: usize) -> String {
+        let mut output = String::new();
+        let indent = "  ".repeat(current_depth);
+
+        output.push_str(&format!("{}{}\n", indent, entry.get_styled_name()));
+
+        if entry.is_dir() {
+            let should_expand = if let Some(max_depth) = self.max_depth {
+                current_depth < max_depth
+            } else {
+                true
+            };
+
+            if should_expand {
+                if let Some(dir_entries) = entry.get_dir_entries() {
+                    for fse in dir_entries {
+                        output.push_str(&self.format_recursive(&fse, current_depth + 1));
+                    }
+                }
+            }
+        }
+
+        output
+    }
+}
+
 pub struct Printer {
     formatter: Box<dyn OutputFormatter>,
 }
 
 impl Printer {
     pub fn new(start_dir: FileSystemEntry, config: Config) -> Self {
-        let formatter: Box<dyn OutputFormatter> = match (config.json_mini, config.json_big) {
-            (true, _) => Box::new(JsonFormatter::new(start_dir, true)),
-            (_, true) => Box::new(JsonFormatter::new(start_dir, false)),
+        let formatter: Box<dyn OutputFormatter> = match (
+            config.json_mini,
+            config.json_big,
+            config.recursive.is_some(),
+        ) {
+            (true, _, _) => Box::new(JsonFormatter::new(start_dir, true)),
+            (_, true, _) => Box::new(JsonFormatter::new(start_dir, false)),
+            (_, _, true) => Box::new(RecursiveFormatter::new(start_dir, config.recursive)),
             _ => {
                 let long = config.long;
                 let cols = config.cols;
