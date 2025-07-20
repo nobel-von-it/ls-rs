@@ -1,4 +1,4 @@
-use std::{fs, io};
+use std::io;
 
 use ls_rs::{command, data_op::Printer, files::FileSystemEntry};
 
@@ -13,13 +13,7 @@ fn main() -> io::Result<()> {
         return Ok(());
     };
 
-    for entry in fs::read_dir(&config.path)? {
-        if let Ok(entry) = entry {
-            if let Some(entry) = FileSystemEntry::from_dir_entry(entry) {
-                start_dir.push_to_dir(entry);
-            }
-        }
-    }
+    start_dir.fill_start_dir();
 
     let printer = Printer::new(start_dir, config);
     printer.print();

@@ -10,6 +10,10 @@ impl DataProcessor {
         Self { entries, config }
     }
 
+    pub fn data_len(&self) -> usize {
+        self.entries.len()
+    }
+
     pub fn filter(mut self) -> Self {
         self.entries
             .retain(|fse| self.config.all || !fse.is_hidden());

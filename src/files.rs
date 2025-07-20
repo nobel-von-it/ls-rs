@@ -375,6 +375,22 @@ impl FileSystemEntry {
             None
         }
     }
+    pub fn fill_start_dir(&mut self) {
+        match self {
+            FileSystemEntry::Directory {
+                base_info, entries, ..
+            } => {
+                for entry in fs::read_dir(&base_info.path).unwrap() {
+                    if let Ok(entry) = entry {
+                        if let Some(entry) = FileSystemEntry::from_dir_entry(entry) {
+                            entries.push(entry);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
     pub fn get_dir_entries(&self) -> Option<Vec<FileSystemEntry>> {
         match self {
             FileSystemEntry::Directory { entries, .. } => Some(entries.clone()),
@@ -423,11 +439,6 @@ impl FileSystemEntry {
             FileSystemEntry::File { base_info, .. } => base_info,
             FileSystemEntry::Directory { base_info, .. } => base_info,
             FileSystemEntry::Link { base_info, .. } => base_info,
-        }
-    }
-    pub fn push_to_dir(&mut self, entry: FileSystemEntry) {
-        if let FileSystemEntry::Directory { entries, .. } = self {
-            entries.push(entry);
         }
     }
     pub fn from_path<S: AsRef<str>>(path: S) -> Option<Self> {
