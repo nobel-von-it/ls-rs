@@ -24,6 +24,7 @@ fn fse_from_dir_path_test() {
     assert!(ft.is_directory());
 }
 
+#[cfg(unix)]
 #[test]
 fn fse_from_link_path_test() {
     use std::fs;
@@ -130,6 +131,7 @@ fn fse_dir_styled_name_test() {
     assert!(styled.contains(fse.name()));
 }
 
+#[cfg(unix)]
 #[test]
 fn fse_link_styled_name_test() {
     let dir = TempDir::new().unwrap();
