@@ -74,11 +74,19 @@ pub struct Config {
     pub time_sort: bool,
     pub size_sort: bool,
     // pub ext_sort: bool,
-    pub recursive: Option<usize>,
+    pub recursive: Option<RecursionOptions>,
     pub one_col: bool,
     pub inode: bool,
     pub json_mini: bool,
     pub json_big: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+
+pub enum RecursionOptions {
+    Depth(usize),
+    Unlimited,
+    No,
 }
 
 impl Config {
@@ -101,10 +109,13 @@ impl Config {
             size_sort: *matches.get_one("size").unwrap(),
             // ext_sort: *matches.get_one("ext").unwrap(),
             recursive: matches.get_one::<String>("recursive").map(|depth| {
-                if depth.to_lowercase() == "max" {
-                    40
+                let depth = depth.to_lowercase();
+                if depth == "max" || depth.contains("unlim") {
+                    RecursionOptions::Unlimited
+                } else if let Ok(depth) = depth.parse() {
+                    RecursionOptions::Depth(depth)
                 } else {
-                    depth.parse::<usize>().unwrap_or(1)
+                    RecursionOptions::No
                 }
             }),
             one_col: *matches.get_one("one").unwrap(),

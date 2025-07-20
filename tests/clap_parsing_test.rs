@@ -121,7 +121,7 @@ fn flag_full_short_test() {
 fn flag_valuable_test() {
     const PATH: &str = "sldkjfskdfj";
     const COLS: usize = 10;
-    const DEPTH: usize = 3;
+    const REC_DEPTH: usize = 3;
 
     let args = [
         "ls-rs",
@@ -129,7 +129,7 @@ fn flag_valuable_test() {
         &COLS.to_string(),
         PATH,
         "-R",
-        &DEPTH.to_string(),
+        &REC_DEPTH.to_string(),
     ];
     let matches = command::ls_command().get_matches_from(args);
     let config = command::Config::clap_parse(&matches);
@@ -149,5 +149,36 @@ fn flag_valuable_test() {
 
     assert_eq!(config.path, PATH);
     assert_eq!(config.cols, Some(COLS));
-    assert_eq!(config.recursive, Some(DEPTH));
+    assert_eq!(
+        config.recursive,
+        Some(command::RecursionOptions::Depth(REC_DEPTH))
+    );
+}
+
+#[test]
+fn flag_recursion_unlim_test() {
+    const PATH: &str = "sldkjfskdfj";
+    const COLS: usize = 10;
+    const REC_MSG: &str = "max";
+
+    let args = ["ls-rs", "-C", &COLS.to_string(), PATH, "-R", REC_MSG];
+    let matches = command::ls_command().get_matches_from(args);
+    let config = command::Config::clap_parse(&matches);
+
+    assert!(!config.all);
+    assert!(!config.long);
+    assert!(!config.numeric);
+    assert!(!config.humanable);
+    assert!(!config.reverse);
+    assert!(!config.name_sort);
+    assert!(!config.time_sort);
+    assert!(!config.size_sort);
+    assert!(!config.one_col);
+    assert!(!config.inode);
+    assert!(!config.json_mini);
+    assert!(!config.json_big);
+
+    assert_eq!(config.path, PATH);
+    assert_eq!(config.cols, Some(COLS));
+    assert_eq!(config.recursive, Some(command::RecursionOptions::Unlimited));
 }

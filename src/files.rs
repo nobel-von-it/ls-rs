@@ -7,7 +7,7 @@ use std::{
 
 use chrono::{DateTime, Local};
 
-use crate::command::Config;
+use crate::command::{Config, RecursionOptions};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum FileColor {
@@ -278,7 +278,11 @@ impl FileSystemEntry {
         let metadata = fs::symlink_metadata(&path).ok()?;
         let mut fse = Self::new_from_values(name, path, metadata)?;
 
-        fse.fill_start_dir(config.recursive);
+        fse.fill_start_dir(config.recursive.clone().map(|r| match r {
+            RecursionOptions::Depth(depth) => depth,
+            RecursionOptions::Unlimited => 40,
+            RecursionOptions::No => 0,
+        }));
         Some(fse)
     }
     #[cfg(unix)]

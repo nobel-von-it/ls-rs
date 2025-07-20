@@ -22,7 +22,10 @@ impl DpTestConfig {
         if self.add_hidden {
             for i in 0..self.count_files / 2 {
                 fs::File::create(dir.path().join(format!("file{i}.txt")))?;
-                fs::File::create(dir.path().join(format!(".file{}.txt", i * 2)))?;
+                fs::File::create(
+                    dir.path()
+                        .join(format!(".file{}.txt", (self.count_files / 2) + i)),
+                )?;
             }
         } else {
             for i in 0..self.count_files {

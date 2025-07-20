@@ -1,4 +1,9 @@
-use crate::{command::Config, files::FileSystemEntry, json::Serializer, term};
+use crate::{
+    command::{Config, RecursionOptions},
+    files::FileSystemEntry,
+    json::Serializer,
+    term,
+};
 
 pub struct DataProcessor {
     entries: Vec<FileSystemEntry>,
@@ -246,11 +251,15 @@ impl OutputFormatter for RecursiveFormatter {
 }
 
 impl RecursiveFormatter {
-    fn new(entry: FileSystemEntry, max_depth: Option<usize>) -> Self {
+    fn new(entry: FileSystemEntry, config: RecursionOptions) -> Self {
         Self {
             entry,
             depth: 0,
-            max_depth,
+            max_depth: match config {
+                RecursionOptions::Depth(depth) => Some(depth),
+                RecursionOptions::Unlimited => None,
+                RecursionOptions::No => Some(0),
+            },
         }
     }
     fn format_recursive(&self, entry: &FileSystemEntry, current_depth: usize) -> String {
@@ -292,7 +301,10 @@ impl Printer {
         ) {
             (true, _, _) => Box::new(JsonFormatter::new(start_dir, true)),
             (_, true, _) => Box::new(JsonFormatter::new(start_dir, false)),
-            (_, _, true) => Box::new(RecursiveFormatter::new(start_dir, config.recursive)),
+            (_, _, true) => Box::new(RecursiveFormatter::new(
+                start_dir,
+                config.recursive.unwrap(),
+            )),
             _ => {
                 let long = config.long;
                 let cols = config.cols;
