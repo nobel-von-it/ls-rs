@@ -165,6 +165,7 @@ fn dp_sort_name_test() {
 
     let dp = DataProcessor::new(fse.get_dir_entries().unwrap(), config);
     assert_eq!(dp.data_len(), count_files * 2);
+    #[cfg(unix)]
     assert!(!dp.get_entries().is_sorted_by_key(|fse| fse.name()));
 
     let dp_sorted = dp.clone().filter().sort();

@@ -521,6 +521,13 @@ impl FileSystemEntry {
             FileSystemEntry::Link { base_info, .. } => &base_info.name,
         }
     }
+    pub fn cname(&self) -> String {
+        match self {
+            FileSystemEntry::File { base_info, .. } => base_info.name.clone(),
+            FileSystemEntry::Directory { base_info, .. } => base_info.name.clone(),
+            FileSystemEntry::Link { base_info, .. } => base_info.name.clone(),
+        }
+    }
     pub fn style(&self) -> &FileStyle {
         match self {
             FileSystemEntry::File { base_info, .. } => &base_info.style,

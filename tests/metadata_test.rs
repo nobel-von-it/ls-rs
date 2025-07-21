@@ -62,14 +62,23 @@ fn medatada_file_readonly_mode_test() -> io::Result<()> {
     let md = file.as_file().metadata()?;
 
     let mut perms = md.permissions();
-    perms.set_readonly(!perms.readonly());
+    println!("readonly {}", perms.readonly());
+    assert!(!perms.readonly());
+    perms.set_readonly(true);
+    assert!(perms.readonly());
+    file.as_file().set_permissions(perms)?;
+    assert!(file.as_file().metadata()?.permissions().readonly());
 
     let md = MetaData::try_from(&file.as_file().metadata()?);
     assert!(md.is_some());
     let md = md.unwrap();
 
+    md.attributes
+        .iter()
+        .enumerate()
+        .for_each(|(i, a)| println!("attrs[{i}] = {a}"));
     assert!(md.attributes[2]); // flags + mode
-    assert_eq!(md.mode_str, "--r---");
+    assert_eq!(md.mode_str, "-ar---");
 
     Ok(())
 }

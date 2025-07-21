@@ -52,7 +52,7 @@ impl DataProcessor {
             self.entries.sort_by_key(|fse| fse.metadata().size);
         }
         if self.config.name_sort {
-            self.entries.sort_by_key(|fse| fse.to_string_short());
+            self.entries.sort_by_key(|fse| fse.cname());
         }
         if self.config.reverse {
             self.entries.reverse();
