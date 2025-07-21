@@ -24,11 +24,15 @@ impl DpTestConfig {
             size_multiplier: add_some_content,
         }
     }
-    fn setup_config_and_start_dir(&self, args: &[&str]) -> io::Result<(FileSystemEntry, Config)> {
+    fn setup_config_and_start_dir(&self, args: Vec<&str>) -> io::Result<(FileSystemEntry, Config)> {
+        let mut args = args.iter().map(|s| s.to_string()).collect::<Vec<String>>();
+
+        let dir = TempDir::new()?;
+        args.push(dir.path().to_str().unwrap().to_string());
+
         let matches = command::ls_command().get_matches_from(args);
         let config = command::Config::clap_parse(&matches);
 
-        let dir = TempDir::new()?;
         for i in 0..self.count_default_files {
             let mut file = fs::File::create(dir.path().join(format!("file{i}.txt")))?;
             if let Some(mul) = self.size_multiplier {
@@ -75,7 +79,7 @@ use tempfile::TempDir;
 fn dp_filter_test() {
     let count_files = 10;
     let dp_config = DpTestConfig::new(count_files, count_files, None);
-    let (fse, config) = dp_config.setup_config_and_start_dir(&["ls_rs"]).unwrap();
+    let (fse, config) = dp_config.setup_config_and_start_dir(vec!["ls_rs"]).unwrap();
     assert!(!config.all);
 
     let mut dp = DataProcessor::new(fse.get_dir_entries().unwrap(), config);
@@ -85,9 +89,48 @@ fn dp_filter_test() {
 
     dp = dp.filter();
     let new_len = dp.data_len();
-
     assert_ne!(start_len, new_len);
     assert_eq!(new_len, count_files);
+}
+
+#[test]
+fn dp_filter_ignore_ignore_test() {
+    let count_files = 10;
+    let dp_config = DpTestConfig::new(count_files, count_files, None);
+    let (fse, config) = dp_config
+        .setup_config_and_start_dir(vec!["ls_rs", "-I", "file"])
+        .unwrap();
+    assert!(!config.all);
+
+    let mut dp = DataProcessor::new(fse.get_dir_entries().unwrap(), config);
+
+    let start_len = dp.data_len();
+    assert_eq!(start_len, count_files * 2);
+
+    dp = dp.filter();
+    let new_len = dp.data_len();
+    assert_ne!(start_len, new_len);
+    assert_eq!(new_len, count_files);
+}
+
+#[test]
+fn dp_filter_ignore_real_test() {
+    let count_files = 10;
+    let dp_config = DpTestConfig::new(count_files, count_files, None);
+    let (fse, config) = dp_config
+        .setup_config_and_start_dir(vec!["ls_rs", "-I", "file1.txt,file2.txt,file3.txt"])
+        .unwrap();
+    assert!(!config.all);
+
+    let mut dp = DataProcessor::new(fse.get_dir_entries().unwrap(), config);
+
+    let start_len = dp.data_len();
+    assert_eq!(start_len, count_files * 2);
+
+    dp = dp.filter();
+    let new_len = dp.data_len();
+    assert_ne!(start_len, new_len);
+    assert_eq!(new_len, count_files - 3);
 }
 
 #[test]
@@ -95,12 +138,36 @@ fn dp_sort_size_test() {
     let count_files = 10;
     let dp_config = DpTestConfig::new(count_files, count_files, Some(3));
     let (fse, config) = dp_config
-        .setup_config_and_start_dir(&["ls_rs", "-S"])
+        .setup_config_and_start_dir(vec!["ls_rs", "-S"])
         .unwrap();
     assert!(config.size_sort);
 
     let dp = DataProcessor::new(fse.get_dir_entries().unwrap(), config);
     assert_eq!(dp.data_len(), count_files * 2);
+
     let dp_sorted = dp.clone().filter().sort();
     assert_ne!(dp, dp_sorted);
+    assert!(
+        dp_sorted
+            .get_entries()
+            .is_sorted_by_key(|fse| fse.metadata().size)
+    )
+}
+
+#[test]
+fn dp_sort_name_test() {
+    let count_files = 10;
+    let dp_config = DpTestConfig::new(count_files, count_files, Some(3));
+    let (fse, config) = dp_config
+        .setup_config_and_start_dir(vec!["ls_rs", "-N"])
+        .unwrap();
+    assert!(config.name_sort);
+
+    let dp = DataProcessor::new(fse.get_dir_entries().unwrap(), config);
+    assert_eq!(dp.data_len(), count_files * 2);
+    assert!(!dp.get_entries().is_sorted_by_key(|fse| fse.name()));
+
+    let dp_sorted = dp.clone().filter().sort();
+    assert_ne!(dp, dp_sorted);
+    assert!(dp_sorted.get_entries().is_sorted_by_key(|fse| fse.name()))
 }

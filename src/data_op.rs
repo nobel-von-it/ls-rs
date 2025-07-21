@@ -28,9 +28,18 @@ impl DataProcessor {
         self.entries.len()
     }
 
+    pub fn get_entries(&self) -> &[FileSystemEntry] {
+        self.entries.as_slice()
+    }
+
     pub fn filter(mut self) -> Self {
         self.entries
             .retain(|fse| self.config.all || !fse.is_hidden());
+        self.entries.retain(|fse| {
+            self.config.ignore.is_none()
+                || !self.config.ignore.as_ref().unwrap().contains(fse.name())
+        });
+
         self
     }
 
@@ -74,6 +83,9 @@ impl PreparedData {
             names
         };
         Self { names }
+    }
+    pub fn get_names(&self) -> &[String] {
+        self.names.as_slice()
     }
 
     fn prepare_short(entries: &[FileSystemEntry], _config: &Config) -> Vec<String> {
@@ -252,6 +264,7 @@ pub struct RecursiveFormatter {
     entry: FileSystemEntry,
     depth: usize,
     max_depth: Option<usize>,
+    ignore: Option<String>,
 }
 impl OutputFormatter for RecursiveFormatter {
     fn format(&self) -> String {
@@ -260,18 +273,24 @@ impl OutputFormatter for RecursiveFormatter {
 }
 
 impl RecursiveFormatter {
-    fn new(entry: FileSystemEntry, config: RecursionOptions) -> Self {
+    fn new(entry: FileSystemEntry, config: &Config) -> Self {
         Self {
             entry,
             depth: 0,
-            max_depth: match config {
-                RecursionOptions::Depth(depth) => Some(depth),
+            max_depth: match config.recursive.as_ref().unwrap() {
+                RecursionOptions::Depth(depth) => Some(*depth),
                 RecursionOptions::Unlimited => None,
                 RecursionOptions::No => Some(0),
             },
+            ignore: config.ignore.clone(),
         }
     }
     fn format_recursive(&self, entry: &FileSystemEntry, current_depth: usize) -> String {
+        if let Some(ignore) = self.ignore.as_ref() {
+            if ignore.contains(entry.name()) {
+                return String::new();
+            }
+        }
         let mut output = String::new();
         let indent = "  ".repeat(current_depth);
 
@@ -310,10 +329,7 @@ impl Printer {
         ) {
             (true, _, _) => Box::new(JsonFormatter::new(start_dir, true)),
             (_, true, _) => Box::new(JsonFormatter::new(start_dir, false)),
-            (_, _, true) => Box::new(RecursiveFormatter::new(
-                start_dir,
-                config.recursive.unwrap(),
-            )),
+            (_, _, true) => Box::new(RecursiveFormatter::new(start_dir, &config)),
             _ => {
                 let long = config.long;
                 let cols = config.cols;

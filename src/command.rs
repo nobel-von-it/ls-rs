@@ -39,6 +39,12 @@ pub fn ls_command() -> Command {
         .about("Fast list files")
         .arg(arg_str("path", false, "Path to list"))
         .arg(arg_flag_t("cols", false, "Number of columns", 'C'))
+        .arg(arg_flag_t(
+            "ignore",
+            false,
+            "Comma separated ignore list",
+            'I',
+        ))
         .arg(arg_bool("all", false, "Show hidden files", false))
         .arg(arg_bool("long", false, "Long format", false))
         .arg(arg_bool("numeric", false, "Numbers in left", false))
@@ -65,6 +71,8 @@ pub fn ls_command() -> Command {
 pub struct Config {
     pub path: String,
     pub cols: Option<usize>,
+    // comma separated
+    pub ignore: Option<String>,
     pub all: bool,
     pub long: bool,
     pub numeric: bool,
@@ -99,6 +107,7 @@ impl Config {
             cols: matches
                 .get_one::<String>("cols")
                 .map(|s| s.parse().unwrap_or(0)),
+            ignore: matches.get_one::<String>("ignore").cloned(),
             all: *matches.get_one("all").unwrap(),
             long: *matches.get_one("long").unwrap(),
             numeric: *matches.get_one("numeric").unwrap(),
