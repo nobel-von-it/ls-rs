@@ -140,7 +140,7 @@ fn dp_sort_size_test() {
     let (fse, config) = dp_config
         .setup_config_and_start_dir(vec!["ls_rs", "-S"])
         .unwrap();
-    assert!(config.size_sort);
+    assert!(config.sort_type.is_some());
 
     let dp = DataProcessor::new(fse.get_dir_entries().unwrap(), config);
     assert_eq!(dp.data_len(), count_files * 2);
@@ -161,7 +161,7 @@ fn dp_sort_name_test() {
     let (fse, config) = dp_config
         .setup_config_and_start_dir(vec!["ls_rs", "-N"])
         .unwrap();
-    assert!(config.name_sort);
+    assert!(config.sort_type.is_some());
 
     let dp = DataProcessor::new(fse.get_dir_entries().unwrap(), config);
     assert_eq!(dp.data_len(), count_files * 2);

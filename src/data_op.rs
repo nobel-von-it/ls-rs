@@ -1,5 +1,5 @@
 use crate::{
-    command::{Config, RecursionOptions},
+    command::{Config, RecursionOptions, SortType},
     files::FileSystemEntry,
     json::Serializer,
     term,
@@ -44,15 +44,12 @@ impl DataProcessor {
     }
 
     pub fn sort(mut self) -> Self {
-        // if provided, sort by time first and then by size and then by name
-        if self.config.time_sort {
-            self.entries.sort_by_key(|fse| fse.metadata().modified_at);
-        }
-        if self.config.size_sort {
-            self.entries.sort_by_key(|fse| fse.metadata().size);
-        }
-        if self.config.name_sort {
-            self.entries.sort_by_key(|fse| fse.cname());
+        if let Some(sort_type) = self.config.sort_type.as_ref() {
+            match sort_type {
+                SortType::Time => self.entries.sort_by_key(|fse| fse.metadata().modified_at),
+                SortType::Size => self.entries.sort_by_key(|fse| fse.metadata().size),
+                SortType::Name => self.entries.sort_by_key(|fse| fse.cname()),
+            }
         }
         if self.config.reverse {
             self.entries.reverse();

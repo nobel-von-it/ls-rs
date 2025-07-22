@@ -49,8 +49,9 @@ pub fn ls_command() -> Command {
         .arg(arg_bool("long", false, "Long format", false))
         .arg(arg_bool("numeric", false, "Numbers in left", false))
         .arg(arg_bool_t("humanable", false, "Human readable", 'H', false))
+        .arg(arg_base("sort", false, "Sort by value").long("sort"))
         .arg(arg_bool("reverse", false, "Reverse order", false))
-        .arg(arg_bool_t("sort", false, "Sort by name", 'N', false))
+        .arg(arg_bool_t("name", false, "Sort by name", 'N', false))
         .arg(arg_bool_t("time", false, "Sort by time", 'T', false))
         .arg(arg_bool_t("size", false, "Sort by size", 'S', false))
         // .arg(arg_bool_t("ext", false, "Sort by extension", 'X', false))
@@ -78,9 +79,7 @@ pub struct Config {
     pub numeric: bool,
     pub humanable: bool,
     pub reverse: bool,
-    pub name_sort: bool,
-    pub time_sort: bool,
-    pub size_sort: bool,
+    pub sort_type: Option<SortType>,
     // pub ext_sort: bool,
     pub recursive: Option<RecursionOptions>,
     pub one_col: bool,
@@ -90,15 +89,41 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-
 pub enum RecursionOptions {
     Depth(usize),
     Unlimited,
     No,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SortType {
+    Name,
+    Size,
+    Time,
+}
+
 impl Config {
     pub fn clap_parse(matches: &ArgMatches) -> Self {
+        let sort_type = if *matches.get_one("name").unwrap() {
+            Some(SortType::Name)
+        } else if *matches.get_one("size").unwrap() {
+            Some(SortType::Size)
+        } else if *matches.get_one("time").unwrap() {
+            Some(SortType::Time)
+        } else {
+            let sort = matches.get_one::<String>("sort");
+            if let Some(sort) = sort {
+                match sort.as_str() {
+                    "name" => Some(SortType::Name),
+                    "size" => Some(SortType::Size),
+                    "time" => Some(SortType::Time),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        };
+
         Self {
             path: matches
                 .get_one::<String>("path")
@@ -113,9 +138,7 @@ impl Config {
             numeric: *matches.get_one("numeric").unwrap(),
             humanable: *matches.get_one("humanable").unwrap(),
             reverse: *matches.get_one("reverse").unwrap(),
-            name_sort: *matches.get_one("sort").unwrap(),
-            time_sort: *matches.get_one("time").unwrap(),
-            size_sort: *matches.get_one("size").unwrap(),
+            sort_type,
             // ext_sort: *matches.get_one("ext").unwrap(),
             recursive: matches.get_one::<String>("recursive").map(|depth| {
                 let depth = depth.to_lowercase();

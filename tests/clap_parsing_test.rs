@@ -1,4 +1,4 @@
-use ls_rs::command;
+use ls_rs::command::{self, SortType};
 
 // #[derive(Debug)]
 // pub struct Config {
@@ -43,9 +43,8 @@ fn flag_full_in_one_test() {
     assert!(config.numeric);
     assert!(config.humanable);
     assert!(config.reverse);
-    assert!(config.name_sort);
-    assert!(config.time_sort);
-    assert!(config.size_sort);
+    assert!(config.sort_type.is_some());
+    assert!(matches!(config.sort_type.unwrap(), SortType::Name));
     assert!(config.one_col);
     assert!(config.inode);
     assert!(config.json_mini);
@@ -64,7 +63,7 @@ fn flag_full_full_test() {
         "--numeric",
         "--humanable",
         "--reverse",
-        "--sort",
+        "--name",
         "--time",
         "--size",
         "--one",
@@ -80,9 +79,8 @@ fn flag_full_full_test() {
     assert!(config.numeric);
     assert!(config.humanable);
     assert!(config.reverse);
-    assert!(config.name_sort);
-    assert!(config.time_sort);
-    assert!(config.size_sort);
+    assert!(config.sort_type.is_some());
+    assert!(matches!(config.sort_type.unwrap(), SortType::Name));
     assert!(config.one_col);
     assert!(config.inode);
     assert!(config.json_mini);
@@ -105,9 +103,8 @@ fn flag_full_short_test() {
     assert!(config.numeric);
     assert!(config.humanable);
     assert!(config.reverse);
-    assert!(config.name_sort);
-    assert!(config.time_sort);
-    assert!(config.size_sort);
+    assert!(config.sort_type.is_some());
+    assert!(matches!(config.sort_type.unwrap(), SortType::Name));
     assert!(config.one_col);
     assert!(config.inode);
     assert!(config.json_mini);
@@ -139,9 +136,7 @@ fn flag_valuable_test() {
     assert!(!config.numeric);
     assert!(!config.humanable);
     assert!(!config.reverse);
-    assert!(!config.name_sort);
-    assert!(!config.time_sort);
-    assert!(!config.size_sort);
+    assert!(config.sort_type.is_none());
     assert!(!config.one_col);
     assert!(!config.inode);
     assert!(!config.json_mini);
@@ -170,9 +165,7 @@ fn flag_recursion_unlim_test() {
     assert!(!config.numeric);
     assert!(!config.humanable);
     assert!(!config.reverse);
-    assert!(!config.name_sort);
-    assert!(!config.time_sort);
-    assert!(!config.size_sort);
+    assert!(config.sort_type.is_none());
     assert!(!config.one_col);
     assert!(!config.inode);
     assert!(!config.json_mini);
@@ -181,4 +174,143 @@ fn flag_recursion_unlim_test() {
     assert_eq!(config.path, PATH);
     assert_eq!(config.cols, Some(COLS));
     assert_eq!(config.recursive, Some(command::RecursionOptions::Unlimited));
+}
+
+#[test]
+fn flag_sort_type_value_name_test() {
+    let args = ["ls-rs", "--sort", "name"];
+    let matches = command::ls_command().get_matches_from(args);
+    let config = command::Config::clap_parse(&matches);
+
+    assert!(!config.all);
+    assert!(!config.long);
+    assert!(!config.numeric);
+    assert!(!config.humanable);
+    assert!(!config.reverse);
+    assert!(!config.one_col);
+    assert!(!config.inode);
+    assert!(!config.json_mini);
+    assert!(!config.json_big);
+
+    assert!(config.sort_type.is_some());
+    assert!(matches!(config.sort_type.unwrap(), SortType::Name));
+}
+
+#[test]
+fn flag_sort_type_flag_name_test() {
+    let args = ["ls-rs", "-N"];
+    let matches = command::ls_command().get_matches_from(args);
+    let config = command::Config::clap_parse(&matches);
+
+    assert!(!config.all);
+    assert!(!config.long);
+    assert!(!config.numeric);
+    assert!(!config.humanable);
+    assert!(!config.reverse);
+    assert!(!config.one_col);
+    assert!(!config.inode);
+    assert!(!config.json_mini);
+    assert!(!config.json_big);
+
+    assert!(config.sort_type.is_some());
+    assert!(matches!(config.sort_type.unwrap(), SortType::Name));
+}
+
+#[test]
+fn flag_sort_type_value_time_test() {
+    let args = ["ls-rs", "--sort", "time"];
+    let matches = command::ls_command().get_matches_from(args);
+    let config = command::Config::clap_parse(&matches);
+
+    assert!(!config.all);
+    assert!(!config.long);
+    assert!(!config.numeric);
+    assert!(!config.humanable);
+    assert!(!config.reverse);
+    assert!(!config.one_col);
+    assert!(!config.inode);
+    assert!(!config.json_mini);
+    assert!(!config.json_big);
+
+    assert!(config.sort_type.is_some());
+    assert!(matches!(config.sort_type.unwrap(), SortType::Time));
+}
+
+#[test]
+fn flag_sort_type_flag_time_test() {
+    let args = ["ls-rs", "-T"];
+    let matches = command::ls_command().get_matches_from(args);
+    let config = command::Config::clap_parse(&matches);
+
+    assert!(!config.all);
+    assert!(!config.long);
+    assert!(!config.numeric);
+    assert!(!config.humanable);
+    assert!(!config.reverse);
+    assert!(!config.one_col);
+    assert!(!config.inode);
+    assert!(!config.json_mini);
+    assert!(!config.json_big);
+
+    assert!(config.sort_type.is_some());
+    assert!(matches!(config.sort_type.unwrap(), SortType::Time));
+}
+
+#[test]
+fn flag_sort_type_value_size_test() {
+    let args = ["ls-rs", "--sort", "size"];
+    let matches = command::ls_command().get_matches_from(args);
+    let config = command::Config::clap_parse(&matches);
+
+    assert!(!config.all);
+    assert!(!config.long);
+    assert!(!config.numeric);
+    assert!(!config.humanable);
+    assert!(!config.reverse);
+    assert!(!config.one_col);
+    assert!(!config.inode);
+    assert!(!config.json_mini);
+    assert!(!config.json_big);
+
+    assert!(config.sort_type.is_some());
+    assert!(matches!(config.sort_type.unwrap(), SortType::Size));
+}
+
+#[test]
+fn flag_sort_type_flag_size_test() {
+    let args = ["ls-rs", "-S"];
+    let matches = command::ls_command().get_matches_from(args);
+    let config = command::Config::clap_parse(&matches);
+
+    assert!(!config.all);
+    assert!(!config.long);
+    assert!(!config.numeric);
+    assert!(!config.humanable);
+    assert!(!config.reverse);
+    assert!(!config.one_col);
+    assert!(!config.inode);
+    assert!(!config.json_mini);
+    assert!(!config.json_big);
+
+    assert!(config.sort_type.is_some());
+    assert!(matches!(config.sort_type.unwrap(), SortType::Size));
+}
+
+#[test]
+fn flag_sort_type_value_wrong_test() {
+    let args = ["ls-rs", "--sort", "wrong"];
+    let matches = command::ls_command().get_matches_from(args);
+    let config = command::Config::clap_parse(&matches);
+
+    assert!(!config.all);
+    assert!(!config.long);
+    assert!(!config.numeric);
+    assert!(!config.humanable);
+    assert!(!config.reverse);
+    assert!(!config.one_col);
+    assert!(!config.inode);
+    assert!(!config.json_mini);
+    assert!(!config.json_big);
+
+    assert!(config.sort_type.is_none());
 }
