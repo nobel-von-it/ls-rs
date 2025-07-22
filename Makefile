@@ -5,7 +5,7 @@ INSTALL_DIR := $(CARGO_HOME)/bin
 all: build
 
 test:
-	cargo test
+	cargo test -- --test-threads=1
 
 build: test
 	cargo build --release
