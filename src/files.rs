@@ -6,7 +6,6 @@ use std::{
 };
 
 use chrono::{DateTime, Local};
-use winapi::um::wingdi::PathToRegion;
 
 use crate::{
     command::{Config, RecursionOptions},
