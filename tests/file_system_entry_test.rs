@@ -1,12 +1,15 @@
 use tempfile::{NamedTempFile, TempDir};
 
-use ls_rs::files::{FileColor, FileSystemEntry, FileType};
+use ls_rs::{
+    error::LsError,
+    files::{FileColor, FileSystemEntry, FileType},
+};
 
 #[test]
 fn fse_from_file_path_test() {
     let file = NamedTempFile::new().unwrap();
     let res = FileSystemEntry::from_path(file.path().to_string_lossy());
-    assert!(res.is_some());
+    assert!(res.is_ok());
     let fse = res.unwrap();
 
     let ft = FileType::from(&fse);
@@ -17,7 +20,7 @@ fn fse_from_file_path_test() {
 fn fse_from_dir_path_test() {
     let dir = TempDir::new().unwrap();
     let res = FileSystemEntry::from_path(dir.path().to_string_lossy());
-    assert!(res.is_some());
+    assert!(res.is_ok());
     let fse = res.unwrap();
 
     let ft = FileType::from(&fse);
@@ -55,19 +58,23 @@ fn fse_from_link_path_test() {
 #[test]
 fn fse_from_invalid_path_test() {
     let res = FileSystemEntry::from_path("invalid_path");
-    assert!(res.is_none());
+    assert!(res.is_err());
+    assert!(matches!(res, Err(LsError::IOError(_))));
 }
 
 #[test]
 fn fse_from_empty_path_test() {
     let res = FileSystemEntry::from_path("");
-    assert!(res.is_none());
+    assert!(res.is_err());
+    assert!(matches!(res, Err(LsError::IOError(_))));
 }
 
 #[test]
 fn fse_from_root_path_test() {
     let res = FileSystemEntry::from_path("/");
-    assert!(res.is_none());
+    assert!(res.is_err());
+    // I don't know how it works.
+    assert!(matches!(res, Err(LsError::NoneValue(_))));
 }
 
 #[test]

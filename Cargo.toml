@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 chrono = "0.4.41"
 clap = "4.5.40"
+thiserror = "2.0.12"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.174"

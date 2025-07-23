@@ -1,18 +1,16 @@
-use std::io;
+use ls_rs::{command, data_op::Printer, error::LsResult, files::FileSystemEntry};
 
-use ls_rs::{command, data_op::Printer, files::FileSystemEntry};
-
-fn main() -> io::Result<()> {
+fn main() -> LsResult<()> {
     let matches = command::ls_command().get_matches();
     let config = command::Config::clap_parse(&matches);
 
-    let start_dir = if let Some(dir) = FileSystemEntry::new_with_config(&config) {
-        dir
-    } else {
-        println!("Path does not exist");
-        return Ok(());
+    let start_dir = match FileSystemEntry::new_with_config(&config) {
+        Ok(dir) => dir,
+        Err(e) => {
+            eprintln!("{e}");
+            return Err(e);
+        }
     };
-    // println!("{start_dir:#?}");
 
     let printer = Printer::new(start_dir, config);
     printer.print();

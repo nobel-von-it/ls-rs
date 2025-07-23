@@ -19,7 +19,8 @@ fn json_fse_file_test() {
     let file = NamedTempFile::new().unwrap();
 
     let fse = FileSystemEntry::from_path(file.path().to_string_lossy());
-    assert!(fse.is_some());
+    assert!(fse.is_ok());
+
     let fse = fse.unwrap();
 
     let json = fse.short_json();
@@ -32,7 +33,7 @@ fn json_fse_dir_test() {
     let dir = TempDir::new().unwrap();
 
     let fse = FileSystemEntry::from_path(dir.path().to_string_lossy());
-    assert!(fse.is_some());
+    assert!(fse.is_ok());
     let fse = fse.unwrap();
 
     let json = fse.short_json();

@@ -2,12 +2,16 @@ use std::{
     collections::HashSet,
     env,
     fs::{self, DirEntry, Metadata},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use chrono::{DateTime, Local};
+use winapi::um::wingdi::PathToRegion;
 
-use crate::command::{Config, RecursionOptions};
+use crate::{
+    command::{Config, RecursionOptions},
+    error::{LsError, LsResult},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum FileColor {
@@ -73,7 +77,7 @@ pub struct MetaData {
 
 impl MetaData {
     #[cfg(unix)]
-    pub fn try_from(metadata: &Metadata) -> Option<Self> {
+    pub fn try_from(metadata: &Metadata) -> LsResult<Self> {
         use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
         Some(MetaData {
@@ -83,21 +87,21 @@ impl MetaData {
             mode: metadata.mode(),
             mode_str: get_file_mode_formated(&metadata),
             executable: metadata.is_file() && metadata.permissions().mode() & 0o111 != 0,
-            created_at: DateTime::from(metadata.created().ok()?),
-            modified_at: DateTime::from(metadata.modified().ok()?),
+            created_at: DateTime::from(metadata.created()?),
+            modified_at: DateTime::from(metadata.modified()?),
         })
     }
     #[cfg(windows)]
-    pub fn try_from(metadata: &Metadata) -> Option<Self> {
-        Some(MetaData {
+    pub fn try_from(metadata: &Metadata) -> LsResult<Self> {
+        Ok(MetaData {
             size: metadata.len(),
             human_size: get_human_readable_size(metadata.len()),
 
             attributes: get_based_file_attributes(metadata),
             mode_str: get_file_mode_formated(metadata),
 
-            created_at: DateTime::from(metadata.created().ok()?),
-            modified_at: DateTime::from(metadata.modified().ok()?),
+            created_at: DateTime::from(metadata.created()?),
+            modified_at: DateTime::from(metadata.modified()?),
         })
     }
 }
@@ -240,6 +244,16 @@ fn get_file_mode_formated(md: &Metadata) -> String {
     mode
 }
 
+fn path_to_string<P: AsRef<Path>>(path: P) -> LsResult<String> {
+    Ok(path
+        .as_ref()
+        .file_name()
+        .ok_or(LsError::none_from("incorrect file_name"))?
+        .to_str()
+        .ok_or(LsError::none_from("non-valid unicode in name"))?
+        .to_string())
+}
+
 fn get_human_readable_size(size: u64) -> String {
     let mut size = size as f64;
     let mut suffix = "B";
@@ -268,34 +282,36 @@ fn get_human_readable_size(size: u64) -> String {
 }
 
 impl FileSystemEntry {
-    pub fn new_with_config(config: &Config) -> Option<Self> {
+    pub fn new_with_config(config: &Config) -> LsResult<Self> {
         let path = if config.path.eq(".") {
-            env::current_dir().ok()?
+            env::current_dir()?
         } else {
             PathBuf::from(&config.path)
         };
-        let name = path.file_name()?.to_str()?.to_string();
-        let metadata = fs::symlink_metadata(&path).ok()?;
+        let name = path_to_string(&path)?;
+        let metadata = fs::symlink_metadata(&path)?;
         let mut fse = Self::new_from_values(name, path, metadata)?;
 
         fse.fill_start_dir(config.recursive.clone().map(|r| match r {
             RecursionOptions::Depth(depth) => depth,
             RecursionOptions::Unlimited => 40,
             RecursionOptions::No => 0,
-        }));
-        Some(fse)
+        }))?;
+        Ok(fse)
     }
-    #[cfg(unix)]
-    pub fn new_from_values(name: String, path: PathBuf, metadata: Metadata) -> Option<Self> {
+    pub fn new_from_values(name: String, path: PathBuf, metadata: Metadata) -> LsResult<Self> {
         let meta_data = MetaData::try_from(&metadata)?;
 
         if metadata.is_file() {
-            Some(FileSystemEntry::File {
+            Ok(FileSystemEntry::File {
                 extension: path
                     .extension()
                     .and_then(|s| s.to_str().map(|s| s.to_string())),
                 base_info: BaseInfo {
                     name,
+                    #[cfg(windows)]
+                    style: FileStyle::default(),
+                    #[cfg(unix)]
                     style: if meta_data.executable {
                         FileStyle {
                             suffix: None,
@@ -309,7 +325,7 @@ impl FileSystemEntry {
                 metadata: meta_data,
             })
         } else if metadata.is_dir() {
-            Some(FileSystemEntry::Directory {
+            Ok(FileSystemEntry::Directory {
                 base_info: BaseInfo {
                     name,
                     style: FileStyle {
@@ -322,8 +338,8 @@ impl FileSystemEntry {
                 entries: vec![],
             })
         } else if metadata.is_symlink() {
-            let target = fs::read_link(&path).ok()?;
-            Some(FileSystemEntry::Link {
+            let target = fs::read_link(&path)?;
+            Ok(FileSystemEntry::Link {
                 base_info: BaseInfo {
                     name,
                     style: FileStyle {
@@ -336,63 +352,17 @@ impl FileSystemEntry {
                 target,
             })
         } else {
-            None
+            Err(LsError::UnknownTypeOfFile(name.clone()))
         }
     }
-    #[cfg(windows)]
-    pub fn new_from_values(name: String, path: PathBuf, metadata: Metadata) -> Option<Self> {
-        let meta_data = MetaData::try_from(&metadata)?;
-
-        if metadata.is_file() {
-            Some(FileSystemEntry::File {
-                extension: path
-                    .extension()
-                    .and_then(|s| s.to_str().map(|s| s.to_string())),
-                base_info: BaseInfo {
-                    name,
-                    style: FileStyle::default(),
-                    path,
-                },
-                metadata: meta_data,
-            })
-        } else if metadata.is_dir() {
-            Some(FileSystemEntry::Directory {
-                base_info: BaseInfo {
-                    name,
-                    style: FileStyle {
-                        suffix: Some('/'),
-                        color: FileColor::Blue,
-                    },
-                    path,
-                },
-                metadata: meta_data,
-                entries: vec![],
-            })
-        } else if metadata.is_symlink() {
-            let target = fs::read_link(&path).ok()?;
-            Some(FileSystemEntry::Link {
-                base_info: BaseInfo {
-                    name,
-                    style: FileStyle {
-                        suffix: Some('@'),
-                        color: FileColor::Aqua,
-                    },
-                    path,
-                },
-                metadata: meta_data,
-                target,
-            })
-        } else {
-            None
-        }
-    }
-    pub fn fill_start_dir(&mut self, recursive: Option<usize>) {
+    pub fn fill_start_dir(&mut self, recursive: Option<usize>) -> LsResult<()> {
         if let Some(depth) = recursive {
             let mut visited_paths = HashSet::new();
             self.fill_dir_recursive_safe(depth, 0, &mut visited_paths);
         } else {
-            self.fill_dir_non_recursive();
+            self.fill_dir_non_recursive()?;
         }
+        Ok(())
     }
     fn fill_dir_recursive_safe(
         &mut self,
@@ -424,7 +394,7 @@ impl FileSystemEntry {
             };
 
             for entry in dir_entries.flatten() {
-                if let Some(mut fse) = FileSystemEntry::from_dir_entry(entry) {
+                if let Ok(mut fse) = FileSystemEntry::from_dir_entry(entry) {
                     if let FileSystemEntry::Directory { .. } = &mut fse {
                         fse.fill_dir_recursive_safe(max_depth, current_depth + 1, visited_paths);
                     }
@@ -435,17 +405,18 @@ impl FileSystemEntry {
             visited_paths.remove(&canonical_path);
         }
     }
-    fn fill_dir_non_recursive(&mut self) {
+    fn fill_dir_non_recursive(&mut self) -> LsResult<()> {
         if let FileSystemEntry::Directory {
             base_info, entries, ..
         } = self
         {
-            for entry in fs::read_dir(&base_info.path).unwrap().flatten() {
-                if let Some(fse) = FileSystemEntry::from_dir_entry(entry) {
+            for entry in fs::read_dir(&base_info.path)?.flatten() {
+                if let Ok(fse) = FileSystemEntry::from_dir_entry(entry) {
                     entries.push(fse)
                 }
             }
         }
+        Ok(())
     }
     pub fn get_dir_entries(&self) -> Option<Vec<FileSystemEntry>> {
         match self {
@@ -495,23 +466,23 @@ impl FileSystemEntry {
             FileSystemEntry::Link { base_info, .. } => base_info,
         }
     }
-    pub fn from_path<S: AsRef<str>>(path: S) -> Option<Self> {
+    pub fn from_path<S: AsRef<str>>(path: S) -> LsResult<Self> {
         let path = if path.as_ref() == "." {
-            env::current_dir().ok()?
+            env::current_dir()?
         } else {
             PathBuf::from(path.as_ref())
         };
-        let metadata = fs::symlink_metadata(&path).ok()?;
+        let metadata = fs::symlink_metadata(&path)?;
 
-        let name = path.file_name()?.to_string_lossy().to_string();
+        let name = path_to_string(&path)?;
 
         FileSystemEntry::new_from_values(name, path, metadata)
     }
-    pub fn from_dir_entry(entry: DirEntry) -> Option<Self> {
+    pub fn from_dir_entry(entry: DirEntry) -> LsResult<Self> {
         let path = entry.path();
-        let metadata = entry.metadata().ok()?;
+        let metadata = entry.metadata()?;
 
-        let name = entry.file_name().to_string_lossy().to_string();
+        let name = path_to_string(&path)?;
         FileSystemEntry::new_from_values(name, path, metadata)
     }
     pub fn name(&self) -> &str {

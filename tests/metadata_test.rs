@@ -24,7 +24,7 @@ fn metadata_file_size_test() -> io::Result<()> {
     file.write_all(message.as_bytes())?;
 
     let md = MetaData::try_from(&file.as_file().metadata()?);
-    assert!(md.is_some());
+    assert!(md.is_ok());
     let md = md.unwrap();
 
     assert_eq!(md.size, message.len() as u64);
@@ -46,7 +46,7 @@ fn medatada_file_mode_test() -> io::Result<()> {
     file.as_file().set_permissions(perms)?;
 
     let md = MetaData::try_from(&file.as_file().metadata()?);
-    assert!(md.is_some());
+    assert!(md.is_ok());
     let md = md.unwrap();
 
     assert_eq!(md.mode, 0o100755); // flags + mode
@@ -70,7 +70,7 @@ fn medatada_file_readonly_mode_test() -> io::Result<()> {
     assert!(file.as_file().metadata()?.permissions().readonly());
 
     let md = MetaData::try_from(&file.as_file().metadata()?);
-    assert!(md.is_some());
+    assert!(md.is_ok());
     let md = md.unwrap();
 
     md.attributes
@@ -93,7 +93,7 @@ fn medatada_file_readonly_mode_test() -> io::Result<()> {
 //     perms.set_readonly(!perms.readonly());
 
 //     let md = MetaData::try_from(&file.as_file().metadata()?);
-//     assert!(md.is_some());
+//     assert!(md.is_ok());
 //     let md = md.unwrap();
 
 //     assert!(md.attributes[2]); // flags + mode
@@ -109,7 +109,7 @@ fn metadata_inode_or_file_index_test() -> io::Result<()> {
     let metadata = file.as_file().metadata()?;
 
     let md = MetaData::try_from(&metadata);
-    assert!(md.is_some());
+    assert!(md.is_ok());
     let md = md.unwrap();
 
     assert!(md.inode > 0);
@@ -130,7 +130,7 @@ fn metadata_timestamps_test() -> io::Result<()> {
     sleep(Duration::from_secs(1));
 
     let md = MetaData::try_from(&file.as_file().metadata()?);
-    assert!(md.is_some());
+    assert!(md.is_ok());
     let md = md.unwrap();
 
     let created_before: DateTime<Local> = created_before.into();
@@ -151,7 +151,7 @@ fn metadata_symlink_test() -> io::Result<()> {
     symlink(file.path(), &symlink_path)?;
 
     let md = MetaData::try_from(&std::fs::symlink_metadata(&symlink_path)?);
-    assert!(md.is_some());
+    assert!(md.is_ok());
     let md = md.unwrap();
 
     assert!(md.mode_str.starts_with('l')); // "lrwxr-xr-x"
