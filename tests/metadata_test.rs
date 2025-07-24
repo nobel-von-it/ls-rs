@@ -1,5 +1,4 @@
-use chrono::{DateTime, Local};
-use ls_rs::files::MetaData;
+use ls_rs::{files::MetaData, time::Time};
 use std::io::{self, Write};
 use tempfile::NamedTempFile;
 
@@ -133,8 +132,8 @@ fn metadata_timestamps_test() -> io::Result<()> {
     assert!(md.is_ok());
     let md = md.unwrap();
 
-    let created_before: DateTime<Local> = created_before.into();
-    let modified_before: DateTime<Local> = modified_before.into();
+    let created_before = Time::from(created_before);
+    let modified_before = Time::from(modified_before);
 
     assert!(md.created_at <= created_before);
     assert!(md.modified_at >= modified_before);

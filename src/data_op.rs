@@ -46,7 +46,9 @@ impl DataProcessor {
     pub fn sort(mut self) -> Self {
         if let Some(sort_type) = self.config.sort_type.as_ref() {
             match sort_type {
-                SortType::Time => self.entries.sort_by_key(|fse| fse.metadata().modified_at),
+                SortType::Time => self
+                    .entries
+                    .sort_by_key(|fse| fse.metadata().modified_at.clone()),
                 SortType::Size => self.entries.sort_by_key(|fse| fse.metadata().size),
                 SortType::Name => self.entries.sort_by_key(|fse| fse.cname()),
             }
@@ -92,13 +94,7 @@ impl PreparedData {
     fn prepare_long(entries: &[FileSystemEntry], config: &Config) -> Vec<String> {
         let max_time = entries
             .iter()
-            .map(|fse| {
-                fse.metadata()
-                    .modified_at
-                    .format("%b %e %R")
-                    .to_string()
-                    .len()
-            })
+            .map(|fse| fse.metadata().modified_at.format().to_string().len())
             .max()
             .unwrap_or(0);
 

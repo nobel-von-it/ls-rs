@@ -35,13 +35,13 @@ impl Serializer for FileSystemEntry {
                 form_field(
                     &mut json,
                     "created_at",
-                    add_quotes(&metadata.created_at.to_rfc3339()),
+                    add_quotes(&metadata.created_at.format()),
                     false,
                 );
                 form_field(
                     &mut json,
                     "modified_at",
-                    add_quotes(&metadata.modified_at.to_rfc3339()),
+                    add_quotes(&metadata.modified_at.format()),
                     false,
                 );
 
@@ -71,13 +71,13 @@ impl Serializer for FileSystemEntry {
                 form_field(
                     &mut json,
                     "created_at",
-                    add_quotes(&metadata.created_at.to_rfc3339()),
+                    add_quotes(&metadata.created_at.format()),
                     false,
                 );
                 form_field(
                     &mut json,
                     "modified_at",
-                    add_quotes(&metadata.modified_at.to_rfc3339()),
+                    add_quotes(&metadata.modified_at.format()),
                     false,
                 );
 
@@ -107,13 +107,13 @@ impl Serializer for FileSystemEntry {
                 form_field(
                     &mut json,
                     "created_at",
-                    add_quotes(&metadata.created_at.to_rfc3339()),
+                    add_quotes(&metadata.created_at.format()),
                     false,
                 );
                 form_field(
                     &mut json,
                     "modified_at",
-                    add_quotes(&metadata.modified_at.to_rfc3339()),
+                    add_quotes(&metadata.modified_at.format()),
                     false,
                 );
 

@@ -5,8 +5,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use chrono::{DateTime, Local};
-
+#[cfg(windows)]
+use crate::time::Time;
 use crate::{
     command::{Config, RecursionOptions},
     error::{LsError, LsResult},
@@ -30,7 +30,7 @@ pub enum FileColor {
 }
 
 impl FileColor {
-    pub fn get_code(&self) -> &str {
+    fn get_code(&self) -> &str {
         match self {
             FileColor::Red => "\x1b[31m",
             FileColor::Green => "\x1b[32m",
@@ -39,8 +39,11 @@ impl FileColor {
             FileColor::Other | FileColor::White => "\x1b[37m",
         }
     }
-    pub fn reset(&self) -> &str {
+    fn reset(&self) -> &str {
         "\x1b[0m"
+    }
+    pub fn wrap<S: AsRef<str>>(&self, s: S) -> String {
+        format!("{}{}{}", self.get_code(), s.as_ref(), self.reset())
     }
 }
 
@@ -70,8 +73,8 @@ pub struct MetaData {
     pub mode_str: String,
     pub attributes: [bool; 6],
 
-    pub created_at: DateTime<Local>,
-    pub modified_at: DateTime<Local>,
+    pub created_at: Time,
+    pub modified_at: Time,
 }
 
 impl MetaData {
@@ -92,6 +95,8 @@ impl MetaData {
     }
     #[cfg(windows)]
     pub fn try_from(metadata: &Metadata) -> LsResult<Self> {
+        use crate::time::Time;
+
         Ok(MetaData {
             size: metadata.len(),
             human_size: get_human_readable_size(metadata.len()),
@@ -99,8 +104,8 @@ impl MetaData {
             attributes: get_based_file_attributes(metadata),
             mode_str: get_file_mode_formated(metadata),
 
-            created_at: DateTime::from(metadata.created()?),
-            modified_at: DateTime::from(metadata.modified()?),
+            created_at: Time::from(metadata.created()?),
+            modified_at: Time::from(metadata.modified()?),
         })
     }
 }
@@ -429,13 +434,7 @@ impl FileSystemEntry {
         } else {
             String::new()
         };
-        format!(
-            "{}{}{}{}",
-            info.style.color.get_code(),
-            info.name,
-            info.style.color.reset(),
-            suffix
-        )
+        format!("{}{}", info.style.color.wrap(&info.name), suffix)
     }
     pub fn get_styled_name(&self) -> String {
         match self {
@@ -545,7 +544,7 @@ impl FileSystemEntry {
     pub fn to_string_long(&self, human_size: bool, max_size: usize, max_time: usize) -> String {
         let styled_name = self.get_styled_name();
         let md = self.metadata();
-        let date_str = md.modified_at.format("%b %e %R");
+        let date_str = md.modified_at.format();
         format!(
             "{} {:<size_width$} {:>time_width$} {}",
             md.mode_str,
