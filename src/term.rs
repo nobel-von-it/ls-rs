@@ -1,4 +1,4 @@
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 pub fn terminal_size() -> Option<(u16, u16)> {
     use libc::{TIOCGWINSZ, ioctl};
     use std::io;
@@ -28,12 +28,12 @@ pub fn terminal_size() -> Option<(u16, u16)> {
     }
 }
 
-#[cfg(target_family = "windows")]
+#[cfg(windows)]
 pub fn terminal_size() -> Option<(u16, u16)> {
-    unsafe {
-        use winapi::um::processenv::GetStdHandle;
-        use winapi::um::wincon::{CONSOLE_SCREEN_BUFFER_INFO, GetConsoleScreenBufferInfo};
+    use winapi::um::processenv::GetStdHandle;
+    use winapi::um::wincon::{CONSOLE_SCREEN_BUFFER_INFO, GetConsoleScreenBufferInfo};
 
+    unsafe {
         let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = std::mem::zeroed();
 
         if GetConsoleScreenBufferInfo(GetStdHandle(-11i32 as _), &mut csbi) != 0 {
@@ -46,7 +46,7 @@ pub fn terminal_size() -> Option<(u16, u16)> {
     }
 }
 
-#[cfg(not(any(target_family = "unix", target_family = "windows")))]
+#[cfg(not(any(unix, windows)))]
 pub fn terminal_size() -> Option<(u16, u16)> {
     None // Unsupported platforms
 }
