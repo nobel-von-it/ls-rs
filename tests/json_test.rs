@@ -51,7 +51,8 @@ fn json_fse_link_test() {
     symlink(file.path(), &symlink_path).unwrap();
 
     let fse = FileSystemEntry::from_path(symlink_path.display().to_string());
-    assert!(fse.is_some());
+    assert!(fse.is_ok());
+
     let fse = fse.unwrap();
 
     let json = fse.short_json();

@@ -5,7 +5,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[cfg(windows)]
 use crate::time::Time;
 use crate::{
     command::{Config, RecursionOptions},
@@ -59,8 +58,8 @@ pub struct MetaData {
     pub mode_str: String,
     pub executable: bool,
 
-    pub created_at: DateTime<Local>,
-    pub modified_at: DateTime<Local>,
+    pub created_at: Time,
+    pub modified_at: Time,
 }
 
 #[cfg(windows)]
@@ -82,15 +81,15 @@ impl MetaData {
     pub fn try_from(metadata: &Metadata) -> LsResult<Self> {
         use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
-        Some(MetaData {
+        Ok(MetaData {
             size: metadata.len(),
             human_size: get_human_readable_size(metadata.len()),
             inode: metadata.ino(),
             mode: metadata.mode(),
             mode_str: get_file_mode_formated(&metadata),
             executable: metadata.is_file() && metadata.permissions().mode() & 0o111 != 0,
-            created_at: DateTime::from(metadata.created()?),
-            modified_at: DateTime::from(metadata.modified()?),
+            created_at: Time::from(metadata.created()?),
+            modified_at: Time::from(metadata.modified()?),
         })
     }
     #[cfg(windows)]
@@ -520,7 +519,7 @@ impl FileSystemEntry {
     ) -> String {
         let styled_name = self.get_styled_name();
         let md = self.metadata();
-        let date_str = md.modified_at.format("%b %e %R");
+        let date_str = md.modified_at.format();
         format!(
             "{}{} {:<size_width$} {:>time_width$} {}",
             if inode {

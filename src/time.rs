@@ -17,7 +17,7 @@ impl From<SystemTime> for Time {
             .unwrap_or(Duration::from_secs(1));
         Self {
             duration_since_epoch,
-            offset: Self::get_local_timezone_offset(),
+            offset: Self::get_local_timezone_offset(duration_since_epoch.as_secs() as i64),
         }
     }
 }
@@ -32,8 +32,19 @@ impl Time {
         Ok(Self::from(modified))
     }
     #[cfg(unix)]
-    fn get_unix_timezone_offset(&self) -> i64 {
-        // TODO: when switch to linux
+    fn get_unix_timezone_offset(duration_since_epoch: i64) -> i64 {
+        use libc::{localtime_r, time_t, tm};
+
+        unsafe {
+            let timestamp = duration_since_epoch as time_t;
+            let mut tm_result: tm = mem::zeroed();
+
+            if !localtime_r(&timestamp, &mut tm_result).is_null() {
+                tm_result.tm_gmtoff
+            } else {
+                0
+            }
+        }
     }
     #[cfg(windows)]
     fn get_windows_timezone_offset() -> i64 {
@@ -48,9 +59,9 @@ impl Time {
             }
         }
     }
-    fn get_local_timezone_offset() -> i64 {
+    fn get_local_timezone_offset(duration_since_epoch: i64) -> i64 {
         #[cfg(unix)]
-        return Self::get_unix_timezone_offset();
+        return Self::get_unix_timezone_offset(duration_since_epoch);
         #[cfg(windows)]
         return Self::get_windows_timezone_offset();
         #[cfg(not(any(unix, windows)))]

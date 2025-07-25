@@ -37,17 +37,17 @@ fn fse_from_link_path_test() {
     fs::File::create(&original).unwrap();
     let link = dir.path().join("link.link");
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     std::os::unix::fs::symlink(&original, &link).unwrap();
 
-    #[cfg(target_family = "windows")]
+    #[cfg(windows)]
     std::os::windows::fs::symlink_file(&original, &link).unwrap();
 
     let path = link.display().to_string();
     println!("link path {}", &path);
 
     let res = FileSystemEntry::from_path(path);
-    assert!(res.is_some());
+    assert!(res.is_ok());
     let fse = res.unwrap();
     assert_eq!(fse.name(), "link.link");
 
@@ -146,10 +146,10 @@ fn fse_link_styled_name_test() {
     std::fs::File::create(&original).unwrap();
     let link = dir.path().join("link.link");
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     std::os::unix::fs::symlink(&original, &link).unwrap();
 
-    #[cfg(target_family = "windows")]
+    #[cfg(windows)]
     std::os::windows::fs::symlink_file(&original, &link).unwrap();
 
     let fse = FileSystemEntry::from_path(link.to_string_lossy()).unwrap();
